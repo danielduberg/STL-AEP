@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>stl_aep</name>
+  <version>1.0.0</version>
+  <description>The stl_aep package</description>
+
+  <maintainer email="dduberg@kth.se">Daniel Duberg</maintainer>
+  <maintainer email="fdsb@kth.se">Fernando S. Barbosa</maintainer>
+
+  <license>MIT</license>
+
+  <url type="repository">https://github.com/danielduberg/STL-AEP</url>
+
+  <author email="dduberg@kth.se">Daniel Duberg</author>
+  <author email="fdsb@kth.se">Fernando S. Barbosa</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <exec_depend>stl_frontier_planner</exec_depend>
+  <exec_depend>stl_aeplanner</exec_depend>
+  <exec_depend>stl_aeplanner_msgs</exec_depend>
+  <exec_depend>stl_evaluation</exec_depend>
+  <exec_depend>stl_exploration</exec_depend>
+
+  <export>
+    <metapackage />
+  </export>
+</package>

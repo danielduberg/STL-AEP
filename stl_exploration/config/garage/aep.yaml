@@ -1,0 +1,46 @@
+name: garage/aep
+volume_complete: 0.99
+time_limit: 1200
+
+camera/horizontal_fov: 115
+camera/vertical_fov: 60
+
+raycast/dr: 0.1
+raycast/dphi: 10
+raycast/dtheta: 10
+
+system/bbx/r: 0.75
+system/bbx/overshoot: 0.25
+
+aep/gain/r_min: 0
+aep/gain/r_max: 7
+aep/gain/zero: 2
+aep/gain/lambda: 0.5
+aep/gain/sigma_thresh: 0.2
+aep/tree/extension_range: 1
+aep/tree/max_sampling_radius: 10
+aep/tree/initial_iterations: 100
+aep/tree/cutoff_iterations: 400
+
+rrt/min_nodes: 100
+rrt/max_nodes: 1000
+
+visualize_rays: 0
+visualize_tree: 1
+visualize_exploration_area: 1
+
+robot_frame: fcu
+world_frame: map
+
+boundary/min: [ -10, -3, 0.2 ]
+boundary/max: [ 24, 30.5, 2.5 ]
+
+lambda: 5
+min_distance: 1
+max_distance: 4
+min_distance_active: 0
+max_distance_active: 0
+routers_active: 0
+distance_add_path: 0.1
+max_search_distance: 40
+step_size: 0.1

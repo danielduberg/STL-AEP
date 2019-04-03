@@ -1,0 +1,35 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>stl_frontier_planner</name>
+  <version>1.0.0</version>
+  <description>The stl_frontier_planner package</description>
+
+  <maintainer email="dduberg@kth.se">Daniel Duberg</maintainer>
+  <maintainer email="fdsb@kth.se">Fernando S. Barbosa</maintainer>
+
+  <license>MIT</license>
+
+  <url type="repository">https://github.com/danielduberg/STL-AEP</url>
+
+  <author email="dduberg@kth.se">Daniel Duberg</author>
+  <author email="fdsb@kth.se">Fernando S. Barbosa</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <depend>actionlib</depend>
+  <depend>actionlib_msgs</depend>
+  <depend>dd_gazebo_plugins</depend>
+  <depend>dynamic_reconfigure</depend>
+  <depend>genmsg</depend>
+  <depend>geometry_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>octomap_world</depend>
+  <depend>roscpp</depend>
+  <depend>stl_aeplanner_msgs</depend>
+  <depend>visualization_msgs</depend>
+ 
+  <build_depend>message_generation</build_depend>
+  <exec_depend>message_runtime</exec_depend>
+
+  <export>
+  </export>
+</package>

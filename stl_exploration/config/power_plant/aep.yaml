@@ -1,0 +1,45 @@
+name: "power_plant/aep"
+
+camera/horizontal_fov: 115.0
+camera/vertical_fov: 60.0
+
+raycast/dr:     0.1
+raycast/dphi:   10
+raycast/dtheta: 10
+
+system/bbx/r: 0.4
+system/bbx/overshoot: 0.1
+
+aep/gain/r_min: 0
+aep/gain/r_max: 7
+aep/gain/zero: 2
+aep/gain/lambda: 0.5
+aep/gain/sigma_thresh: 0.2
+aep/tree/extension_range: 1.0
+aep/tree/max_sampling_radius: 30
+aep/tree/initial_iterations: 100
+aep/tree/cutoff_iterations: 400
+
+rrt/min_nodes: 100
+
+visualize_rays: false
+visualize_tree: true
+visualize_exploration_area: true
+
+robot_frame: "fcu"
+world_frame: "map"
+
+# bounding box: necessary to limit the simulation 
+# scenario (smaller than actual gazebo scenario)
+boundary/min: [ -1.0,  -24.0, -4.0]
+boundary/max: [ 30.0,   7.0,  26.0]
+
+lambda: 5.0
+min_distance: 1.0
+max_distance: 4.0
+min_distance_active: true
+max_distance_active: true
+routers_active: true
+distance_add_path: 0.1
+max_search_distance: 40.0
+step_size: 0.1

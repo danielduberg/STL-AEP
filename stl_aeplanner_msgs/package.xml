@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>stl_aeplanner_msgs</name>
+  <version>1.0.0</version>
+  <description>The stl_aeplanner_msgs package</description>
+
+  <maintainer email="dduberg@kth.se">Daniel Duberg</maintainer>
+  <maintainer email="fdsb@kth.se">Fernando S. Barbosa</maintainer>
+
+  <license>MIT</license>
+
+  <url type="repository">https://github.com/danielduberg/STL-AEP</url>
+
+  <author email="dduberg@kth.se">Daniel Duberg</author>
+  <author email="fdsb@kth.se">Fernando S. Barbosa</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <build_depend>geometry_msgs</build_depend>
+  <build_depend>message_generation</build_depend>
+  <build_depend>nav_msgs</build_depend>
+  <build_depend>std_msgs</build_depend>
+  <build_export_depend>geometry_msgs</build_export_depend>
+  <build_export_depend>nav_msgs</build_export_depend>
+  <build_export_depend>std_msgs</build_export_depend>
+  <exec_depend>geometry_msgs</exec_depend>
+  <exec_depend>message_runtime</exec_depend>
+  <exec_depend>nav_msgs</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+
+  <export>
+  </export>
+</package>

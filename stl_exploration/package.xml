@@ -1,0 +1,39 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>stl_exploration</name>
+  <version>1.0.0</version>
+  <description>The stl_exploration package</description>
+
+  <maintainer email="dduberg@kth.se">Daniel Duberg</maintainer>
+  <maintainer email="fdsb@kth.se">Fernando S. Barbosa</maintainer>
+
+  <license>MIT</license>
+
+  <url type="repository">https://github.com/danielduberg/STL-AEP</url>
+
+  <author email="dduberg@kth.se">Daniel Duberg</author>
+  <author email="fdsb@kth.se">Fernando S. Barbosa</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <depend>actionlib</depend>
+  <depend>actionlib_msgs</depend>
+  <depend>cv_bridge</depend>
+  <depend>genmsg</depend>
+  <depend>geometry_msgs</depend>
+  <depend>mavros_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>nodelet</depend>
+  <depend>octomap</depend>
+  <depend>octomap_msgs</depend>
+  <depend>opencv2</depend>
+  <depend>roscpp</depend>
+  <depend>rospy</depend>
+  <depend>sensor_msgs</depend>
+  <depend>std_msgs</depend>
+  <depend>stl_aeplanner_msgs</depend>
+  <depend>tf</depend>
+
+  <export>
+    <nodelet plugin="${prefix}/rpl_exploration_nodelets.xml" />
+  </export>
+</package>

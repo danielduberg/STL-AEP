@@ -1,0 +1,9 @@
+<?xml version="1.0" ?>
+<launch>
+  <arg name="path" default="" />
+  <arg name="param_file" default="$(find stl_exploration)/config/$(arg path).yaml" />
+  <node name="stl_frontier_planner_node" pkg="stl_frontier_planner" type="stl_frontier_planner_node" output="screen">
+    <remap from="octomap" to="octomap_full"/>
+    <rosparam command="load" file="$(arg param_file)" />
+  </node>
+</launch>

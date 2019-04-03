@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>stl_evaluation</name>
+  <version>1.0.0</version>
+  <description>The stl_evaluation package</description>
+
+  <maintainer email="dduberg@kth.se">Daniel Duberg</maintainer>
+  <maintainer email="fdsb@kth.se">Fernando S. Barbosa</maintainer>
+
+  <license>MIT</license>
+
+  <url type="repository">https://github.com/danielduberg/STL-AEP</url>
+
+  <author email="dduberg@kth.se">Daniel Duberg</author>
+  <author email="fdsb@kth.se">Fernando S. Barbosa</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <depend>geometry_msgs</depend>
+  <depend>octomap</depend>
+  <depend>octomap_msgs</depend>
+  <depend>roscpp</depend>
+  <depend>roslib</depend>
+  <depend>stl_aeplanner_msgs</depend>
+  <depend>tf2</depend>
+
+  <export>
+  </export>
+</package>
