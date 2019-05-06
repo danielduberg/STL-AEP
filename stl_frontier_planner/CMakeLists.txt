@@ -27,7 +27,7 @@ if(OPENMP_FOUND)
 endif()
 
 generate_dynamic_reconfigure_options(
-  cfg/LTL.cfg
+  cfg/STL.cfg
 )
 
 catkin_package(
@@ -41,7 +41,7 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
 )
 
-add_library(stl_frontier_planner src/stl_frontier_planner.cpp)
+add_library(stl_frontier_planner src/stl_frontier_planner.cpp src/stl_frontier_planner/rrt_node.cpp)
 target_compile_options(stl_frontier_planner PRIVATE ${OpenMP_FLAGS})
 target_link_libraries(stl_frontier_planner
   ${catkin_LIBRARIES}
@@ -55,7 +55,7 @@ add_dependencies(stl_frontier_planner
   ${PROJECT_NAME}_gencfg
 )
 
-add_executable(stl_frontier_planner_node src/stl_frontier_planner_node.cpp src/stl_frontier_planner.cpp)
+add_executable(stl_frontier_planner_node src/stl_frontier_planner_node.cpp src/stl_frontier_planner.cpp src/stl_frontier_planner/rrt_node.cpp)
 target_compile_options(stl_frontier_planner_node PRIVATE ${OpenMP_FLAGS})
 target_link_libraries(stl_frontier_planner_node
   ${catkin_LIBRARIES}

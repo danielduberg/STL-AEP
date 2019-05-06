@@ -2,18 +2,18 @@
 
 namespace stl_frontier_planner
 {
-Rrt::Rrt(const ros::NodeHandle& nh)
+STLFrontierPlanner::STLFrontierPlanner(const ros::NodeHandle& nh)
   : nh_(nh)
   , nh_priv_("~")
   , frame_id_("map")
   , path_pub_(nh_.advertise<visualization_msgs::Marker>("rrt_path", 1000))
-  , octomap_sub_(nh_.subscribe("octomap", 1, &Rrt::octomapCallback, this))
-  , as_(nh_, "rrt", boost::bind(&Rrt::execute, this, _1), false)
+  , octomap_sub_(nh_.subscribe("octomap", 1, &STLFrontierPlanner::octomapCallback, this))
+  , as_(nh_, "rrt", boost::bind(&STLFrontierPlanner::execute, this, _1), false)
   , ltl_cs_(nh_priv_)
-  , router_sub_(nh_.subscribe("/router", 10, &Rrt::routerCallback, this))
+  , router_sub_(nh_.subscribe("/router", 10, &STLFrontierPlanner::routerCallback, this))
 {
   // Set up dynamic reconfigure server
-  ltl_f_ = boost::bind(&Rrt::configCallback, this, _1, _2);
+  ltl_f_ = boost::bind(&STLFrontierPlanner::configCallback, this, _1, _2);
   ltl_cs_.setCallback(ltl_f_);
 
   std::string ns = ros::this_node::getNamespace();
@@ -45,11 +45,11 @@ Rrt::Rrt(const ros::NodeHandle& nh)
   as_.start();
 }
 
-void Rrt::execute(const aeplanner_msgs::rrtGoalConstPtr& goal)
+void STLFrontierPlanner::execute(const stl_aeplanner_msgs::rrtGoalConstPtr& goal)
 {
   std::shared_ptr<octomap::OcTree> ot = ot_;
 
-  aeplanner_msgs::rrtResult result;
+  stl_aeplanner_msgs::rrtResult result;
   if (!ot)
   {
     ROS_WARN("No octomap received");
@@ -68,21 +68,20 @@ void Rrt::execute(const aeplanner_msgs::rrtGoalConstPtr& goal)
   double l = extension_range_;
   double r = bounding_radius_;
   double r_os = bounding_overshoot_;
-  std::vector<std::shared_ptr<RrtNode>> found_goals;
+  std::vector<std::shared_ptr<RRTNode>> found_goals;
 
   value_rtree rtree;       // Initalize tree
   point_rtree goal_rtree;  // kd tree with all goals
   ROS_WARN_STREAM("We have this many goals for RRT: " << goal->goal_poses.poses.size());
   for (int i = 0; i < goal->goal_poses.poses.size(); ++i)
   {
-    Eigen::Vector3d* g = new Eigen::Vector3d(goal->goal_poses.poses[i].position.x,
-                                             goal->goal_poses.poses[i].position.y,
+    Eigen::Vector3d* g = new Eigen::Vector3d(goal->goal_poses.poses[i].position.x, goal->goal_poses.poses[i].position.y,
                                              goal->goal_poses.poses[i].position.z);
     goal_rtree.insert(point((*g)[0], (*g)[1], (*g)[2]));
   }
 
   // Initialize root position
-  std::shared_ptr<RrtNode> root = std::make_shared<RrtNode>();
+  std::shared_ptr<RRTNode> root = std::make_shared<RRTNode>();
   root->pos[0] = goal->start.pose.position.x;
   root->pos[1] = goal->start.pose.position.y;
   root->pos[2] = goal->start.pose.position.z;
@@ -101,7 +100,7 @@ void Rrt::execute(const aeplanner_msgs::rrtGoalConstPtr& goal)
     Eigen::Vector3d z_samp = sample();
 
     // Get nearest neighbour
-    std::shared_ptr<RrtNode> z_parent = chooseParent(stl_rtree, rtree, z_samp, l);
+    std::shared_ptr<RRTNode> z_parent = chooseParent(stl_rtree, rtree, z_samp, l);
     if (!z_parent)
       continue;
 
@@ -109,17 +108,16 @@ void Rrt::execute(const aeplanner_msgs::rrtGoalConstPtr& goal)
     Eigen::Vector3d new_pos = getNewPos(z_samp, z_parent->pos, l);
     Eigen::Vector3d direction = new_pos - z_parent->pos;
 
-    if (isInsideBoundaries(new_pos) &&
-        !collisionLine(ot, z_parent->pos, new_pos + direction.normalized() * r_os, r))
+    if (isInsideBoundaries(new_pos) && !collisionLine(ot, z_parent->pos, new_pos + direction.normalized() * r_os, r))
     {
       // Add node to tree
-      std::shared_ptr<RrtNode> z_new = addNodeToTree(ot, &rtree, z_parent, new_pos);
+      std::shared_ptr<RRTNode> z_new = addNodeToTree(ot, &rtree, z_parent, new_pos);
       rewire(ot, stl_rtree, rtree, z_new, l, r, r_os);
 
       visualizeEdge(z_new, i);
 
       // Check if goal has been reached
-      std::shared_ptr<RrtNode> tmp_goal = getGoal(ot, goal_rtree, z_new, l, r, r_os);
+      std::shared_ptr<RRTNode> tmp_goal = getGoal(ot, goal_rtree, z_new, l, r, r_os);
       if (tmp_goal)
       {
         found_goals.push_back(tmp_goal);
@@ -136,11 +134,10 @@ void Rrt::execute(const aeplanner_msgs::rrtGoalConstPtr& goal)
   as_.setSucceeded(result);
 }
 
-point_rtree Rrt::getRtree(std::shared_ptr<octomap::OcTree> ot)
+point_rtree STLFrontierPlanner::getRtree(std::shared_ptr<octomap::OcTree> ot)
 {
   point_rtree rtree;
-  for (octomap::OcTree::leaf_iterator it = ot->begin_leafs(), it_end = ot->end_leafs();
-       it != it_end; ++it)
+  for (octomap::OcTree::leaf_iterator it = ot->begin_leafs(), it_end = ot->end_leafs(); it != it_end; ++it)
   {
     if (it->getLogOdds() > 0)
     {
@@ -151,7 +148,7 @@ point_rtree Rrt::getRtree(std::shared_ptr<octomap::OcTree> ot)
   return rtree;
 }
 
-void Rrt::octomapCallback(const octomap_msgs::Octomap& msg)
+void STLFrontierPlanner::octomapCallback(const octomap_msgs::Octomap& msg)
 {
   octomap::AbstractOcTree* aot = octomap_msgs::msgToMap(msg);
   octomap::OcTree* ot = (octomap::OcTree*)aot;
@@ -161,7 +158,7 @@ void Rrt::octomapCallback(const octomap_msgs::Octomap& msg)
     delete ot;
 }
 
-Eigen::Vector3d Rrt::sample()
+Eigen::Vector3d STLFrontierPlanner::sample()
 {
   Eigen::Vector3d x_samp;
   for (int i = 0; i < 3; ++i)
@@ -170,27 +167,25 @@ Eigen::Vector3d Rrt::sample()
   return x_samp;
 }
 
-std::shared_ptr<RrtNode> Rrt::chooseParent(const std::shared_ptr<point_rtree>& stl_rtree,
-                                           const value_rtree& rtree, Eigen::Vector3d node,
-                                           double l)
+std::shared_ptr<RRTNode> STLFrontierPlanner::chooseParent(const std::shared_ptr<point_rtree>& stl_rtree, const value_rtree& rtree,
+                                           Eigen::Vector3d node, double l)
 {
   // TODO: How many neighbours to look for?
   std::vector<value> nearest;
-  rtree.query(boost::geometry::index::nearest(point(node[0], node[1], node[2]), 15),
-              std::back_inserter(nearest));
+  rtree.query(boost::geometry::index::nearest(point(node[0], node[1], node[2]), 15), std::back_inserter(nearest));
 
   // TODO: Check if correct
-  std::shared_ptr<RrtNode> best_node;
+  std::shared_ptr<RRTNode> best_node;
   double best_cost;
 
   for (value item : nearest)
   {
-    std::shared_ptr<RrtNode> current_node = item.second;
+    std::shared_ptr<RRTNode> current_node = item.second;
 
-    double current_cost = current_node->cost(
-        stl_rtree, ltl_lambda_, ltl_min_distance_, ltl_max_distance_,
-        ltl_min_distance_active_, ltl_max_distance_active_, ltl_max_search_distance_,
-        bounding_radius_, ltl_step_size_, ltl_routers_, ltl_routers_active_);
+    double current_cost =
+        current_node->cost(stl_rtree, ltl_lambda_, ltl_min_distance_, ltl_max_distance_, ltl_min_distance_active_,
+                           ltl_max_distance_active_, ltl_max_search_distance_, bounding_radius_, ltl_step_size_,
+                           ltl_routers_, ltl_routers_active_);
 
     if (!best_node || current_cost < best_cost)
     {
@@ -202,34 +197,28 @@ std::shared_ptr<RrtNode> Rrt::chooseParent(const std::shared_ptr<point_rtree>& s
   return best_node;
 }
 
-void Rrt::rewire(std::shared_ptr<octomap::OcTree> ot,
-                 const std::shared_ptr<point_rtree>& stl_rtree, const value_rtree& rtree,
-                 std::shared_ptr<RrtNode> new_node, double l, double r, double r_os)
+void STLFrontierPlanner::rewire(std::shared_ptr<octomap::OcTree> ot, const std::shared_ptr<point_rtree>& stl_rtree,
+                                const value_rtree& rtree, std::shared_ptr<RRTNode> new_node, double l, double r,
+                                double r_os)
 {
   // TODO: How many neighbours to look for?
   std::vector<value> nearest;
-  rtree.query(boost::geometry::index::nearest(
-                  point(new_node->pos[0], new_node->pos[1], new_node->pos[2]), 5),
+  rtree.query(boost::geometry::index::nearest(point(new_node->pos[0], new_node->pos[1], new_node->pos[2]), 5),
               std::back_inserter(nearest));
 
-  double new_cost = new_node->cost(
-      stl_rtree, ltl_lambda_, ltl_min_distance_, ltl_max_distance_,
-      ltl_min_distance_active_, ltl_max_distance_active_, ltl_max_search_distance_,
-      bounding_radius_, ltl_step_size_, ltl_routers_, ltl_routers_active_);
+  double new_cost = new_node->cost(stl_rtree, ltl_lambda_, ltl_min_distance_, ltl_max_distance_,
+                                   ltl_min_distance_active_, ltl_max_distance_active_, ltl_max_search_distance_,
+                                   bounding_radius_, ltl_step_size_, ltl_routers_, ltl_routers_active_);
 
   for (value item : nearest)
   {
-    std::shared_ptr<RrtNode> current_node = item.second;
+    std::shared_ptr<RRTNode> current_node = item.second;
 
-    if (current_node->cost(stl_rtree, ltl_lambda_, ltl_min_distance_, ltl_max_distance_,
-                           ltl_min_distance_active_, ltl_max_distance_active_,
-                           ltl_max_search_distance_, bounding_radius_, ltl_step_size_,
-                           ltl_routers_, ltl_routers_active_) >
-        new_cost + (current_node->pos - new_node->pos).norm())
+    if (current_node->cost(stl_rtree, ltl_lambda_, ltl_min_distance_, ltl_max_distance_, ltl_min_distance_active_,
+                           ltl_max_distance_active_, ltl_max_search_distance_, bounding_radius_, ltl_step_size_,
+                           ltl_routers_, ltl_routers_active_) > new_cost + (current_node->pos - new_node->pos).norm())
     {
-      if (!collisionLine(ot, new_node->pos,
-                         current_node->pos +
-                             (current_node->pos - new_node->pos).normalized() * r_os,
+      if (!collisionLine(ot, new_node->pos, current_node->pos + (current_node->pos - new_node->pos).normalized() * r_os,
                          r))
       {
         current_node->parent = new_node;
@@ -238,7 +227,7 @@ void Rrt::rewire(std::shared_ptr<octomap::OcTree> ot,
   }
 }
 
-Eigen::Vector3d Rrt::getNewPos(Eigen::Vector3d sampled, Eigen::Vector3d parent, double l)
+Eigen::Vector3d STLFrontierPlanner::getNewPos(Eigen::Vector3d sampled, Eigen::Vector3d parent, double l)
 {
   Eigen::Vector3d direction = sampled - parent;
   if (direction.norm() > l)
@@ -247,31 +236,25 @@ Eigen::Vector3d Rrt::getNewPos(Eigen::Vector3d sampled, Eigen::Vector3d parent, 
   return parent + direction;
 }
 
-std::shared_ptr<RrtNode> Rrt::addNodeToTree(std::shared_ptr<octomap::OcTree> ot,
-                                            value_rtree* rtree,
-                                            std::shared_ptr<RrtNode> parent,
-                                            Eigen::Vector3d new_pos)
+std::shared_ptr<RRTNode> STLFrontierPlanner::addNodeToTree(std::shared_ptr<octomap::OcTree> ot, value_rtree* rtree,
+                                                           std::shared_ptr<RRTNode> parent, Eigen::Vector3d new_pos)
 {
-  std::shared_ptr<RrtNode> new_node = std::make_shared<RrtNode>();
+  std::shared_ptr<RRTNode> new_node = std::make_shared<RRTNode>();
   new_node->pos = new_pos;
 
   new_node->parent = parent;
   parent->children.push_back(new_node);
-  rtree->insert(std::make_pair(
-      point(new_node->pos[0], new_node->pos[1], new_node->pos[2]), new_node));
+  rtree->insert(std::make_pair(point(new_node->pos[0], new_node->pos[1], new_node->pos[2]), new_node));
 
   return new_node;
 }
 
-std::shared_ptr<RrtNode> Rrt::getGoal(std::shared_ptr<octomap::OcTree> ot,
-                                      const point_rtree& goal_tree,
-                                      std::shared_ptr<RrtNode> new_node, double l,
-                                      double r, double r_os)
+std::shared_ptr<RRTNode> STLFrontierPlanner::getGoal(std::shared_ptr<octomap::OcTree> ot, const point_rtree& goal_tree,
+                                                     std::shared_ptr<RRTNode> new_node, double l, double r, double r_os)
 {
   // TODO: How many neighbours to look for?
   std::vector<point> nearest;
-  goal_tree.query(boost::geometry::index::nearest(
-                      point(new_node->pos[0], new_node->pos[1], new_node->pos[2]), 1),
+  goal_tree.query(boost::geometry::index::nearest(point(new_node->pos[0], new_node->pos[1], new_node->pos[2]), 1),
                   std::back_inserter(nearest));
 
   for (point item : nearest)
@@ -280,8 +263,7 @@ std::shared_ptr<RrtNode> Rrt::getGoal(std::shared_ptr<octomap::OcTree> ot,
 
     if ((goal_node - new_node->pos).norm() < 1.5)
     {
-      if (!collisionLine(ot, new_node->pos,
-                         goal_node + (goal_node - new_node->pos).normalized() * r_os, r))
+      if (!collisionLine(ot, new_node->pos, goal_node + (goal_node - new_node->pos).normalized() * r_os, r))
       {
         return new_node;
       }
@@ -291,8 +273,8 @@ std::shared_ptr<RrtNode> Rrt::getGoal(std::shared_ptr<octomap::OcTree> ot,
   return NULL;
 }
 
-nav_msgs::Path Rrt::getBestPath(const std::shared_ptr<point_rtree>& stl_rtree,
-                                std::vector<std::shared_ptr<RrtNode>> goals)
+nav_msgs::Path STLFrontierPlanner::getBestPath(const std::shared_ptr<point_rtree>& stl_rtree,
+                                               std::vector<std::shared_ptr<RRTNode>> goals)
 {
   nav_msgs::Path path;
   if (goals.size() == 0)
@@ -300,18 +282,16 @@ nav_msgs::Path Rrt::getBestPath(const std::shared_ptr<point_rtree>& stl_rtree,
     return path;
   }
 
-  std::shared_ptr<RrtNode> best_node = goals[0];
-  double best_cost = best_node->cost(
-      stl_rtree, ltl_lambda_, ltl_min_distance_, ltl_max_distance_,
-      ltl_min_distance_active_, ltl_max_distance_active_, ltl_max_search_distance_,
-      bounding_radius_, ltl_step_size_, ltl_routers_, ltl_routers_active_);
+  std::shared_ptr<RRTNode> best_node = goals[0];
+  double best_cost = best_node->cost(stl_rtree, ltl_lambda_, ltl_min_distance_, ltl_max_distance_,
+                                     ltl_min_distance_active_, ltl_max_distance_active_, ltl_max_search_distance_,
+                                     bounding_radius_, ltl_step_size_, ltl_routers_, ltl_routers_active_);
 
   for (int i = 0; i < goals.size(); ++i)
   {
-    double current_cost = goals[i]->cost(
-        stl_rtree, ltl_lambda_, ltl_min_distance_, ltl_max_distance_,
-        ltl_min_distance_active_, ltl_max_distance_active_, ltl_max_search_distance_,
-        bounding_radius_, ltl_step_size_, ltl_routers_, ltl_routers_active_);
+    double current_cost = goals[i]->cost(stl_rtree, ltl_lambda_, ltl_min_distance_, ltl_max_distance_,
+                                         ltl_min_distance_active_, ltl_max_distance_active_, ltl_max_search_distance_,
+                                         bounding_radius_, ltl_step_size_, ltl_routers_, ltl_routers_active_);
     if (best_cost > current_cost)
     {
       best_node = goals[i];
@@ -319,7 +299,7 @@ nav_msgs::Path Rrt::getBestPath(const std::shared_ptr<point_rtree>& stl_rtree,
     }
   }
 
-  std::shared_ptr<RrtNode> n = best_node;
+  std::shared_ptr<RRTNode> n = best_node;
   for (int id = 0; n->parent; ++id)
   {
     geometry_msgs::PoseStamped p;
@@ -349,16 +329,16 @@ nav_msgs::Path Rrt::getBestPath(const std::shared_ptr<point_rtree>& stl_rtree,
   return path;
 }
 
-std::vector<geometry_msgs::Pose> Rrt::checkIfGoalReached(
-    std::shared_ptr<octomap::OcTree> ot, const point_rtree& goal_tree,
-    std::shared_ptr<RrtNode> new_node, double l, double r, double r_os)
+std::vector<geometry_msgs::Pose> STLFrontierPlanner::checkIfGoalReached(std::shared_ptr<octomap::OcTree> ot,
+                                                                        const point_rtree& goal_tree,
+                                                                        std::shared_ptr<RRTNode> new_node, double l,
+                                                                        double r, double r_os)
 {
   std::vector<geometry_msgs::Pose> path;
 
   // TODO: How many neighbours to look for?
   std::vector<point> nearest;
-  goal_tree.query(boost::geometry::index::nearest(
-                      point(new_node->pos[0], new_node->pos[1], new_node->pos[2]), 1),
+  goal_tree.query(boost::geometry::index::nearest(point(new_node->pos[0], new_node->pos[1], new_node->pos[2]), 1),
                   std::back_inserter(nearest));
 
   for (point item : nearest)
@@ -367,10 +347,9 @@ std::vector<geometry_msgs::Pose> Rrt::checkIfGoalReached(
 
     if ((goal_node - new_node->pos).norm() < 2 * l)
     {
-      if (!collisionLine(ot, new_node->pos,
-                         goal_node + (goal_node - new_node->pos).normalized() * r_os, r))
+      if (!collisionLine(ot, new_node->pos, goal_node + (goal_node - new_node->pos).normalized() * r_os, r))
       {
-        std::shared_ptr<RrtNode> n = new_node;
+        std::shared_ptr<RRTNode> n = new_node;
         for (int id = 0; n->parent; ++id)
         {
           geometry_msgs::Pose p;
@@ -382,8 +361,7 @@ std::vector<geometry_msgs::Pose> Rrt::checkIfGoalReached(
           // Zero out rotation
           // along x and y axis
           // so only yaw is kept
-          Eigen::Vector3d dir(n->pos[0] - n->parent->pos[0],
-                              n->pos[1] - n->parent->pos[1], 0);
+          Eigen::Vector3d dir(n->pos[0] - n->parent->pos[0], n->pos[1] - n->parent->pos[1], 0);
           q.setFromTwoVectors(init, dir);
 
           p.orientation.x = q.x();
@@ -406,15 +384,13 @@ std::vector<geometry_msgs::Pose> Rrt::checkIfGoalReached(
   return path;
 }
 
-bool Rrt::collisionLine(std::shared_ptr<octomap::OcTree> ot, Eigen::Vector3d p1,
-                        Eigen::Vector3d p2, double r)
+bool STLFrontierPlanner::collisionLine(std::shared_ptr<octomap::OcTree> ot, Eigen::Vector3d p1, Eigen::Vector3d p2,
+                                       double r)
 {
   octomap::point3d start(p1[0], p1[1], p1[2]);
   octomap::point3d end(p2[0], p2[1], p2[2]);
-  octomap::point3d min(std::min(p1[0], p2[0]) - r, std::min(p1[1], p2[1]) - r,
-                       std::min(p1[2], p2[2]) - r);
-  octomap::point3d max(std::max(p1[0], p2[0]) + r, std::max(p1[1], p2[1]) + r,
-                       std::max(p1[2], p2[2]) + r);
+  octomap::point3d min(std::min(p1[0], p2[0]) - r, std::min(p1[1], p2[1]) - r, std::min(p1[2], p2[2]) - r);
+  octomap::point3d max(std::max(p1[0], p2[0]) + r, std::max(p1[1], p2[1]) + r, std::max(p1[2], p2[2]) + r);
   double lsq = (end - start).norm_sq();
   double rsq = r * r;
 
@@ -423,8 +399,7 @@ bool Rrt::collisionLine(std::shared_ptr<octomap::OcTree> ot, Eigen::Vector3d p1,
   if (!ot_res)
     return true;
 
-  for (octomap::OcTree::leaf_bbx_iterator it = ot->begin_leafs_bbx(min, max),
-                                          it_end = ot->end_leafs_bbx();
+  for (octomap::OcTree::leaf_bbx_iterator it = ot->begin_leafs_bbx(min, max), it_end = ot->end_leafs_bbx();
        it != it_end; ++it)
   {
     octomap::point3d pt(it.getX(), it.getY(), it.getZ());
@@ -527,8 +502,8 @@ bool Rrt::collisionLine(std::shared_ptr<octomap::OcTree> ot, Eigen::Vector3d p1,
 // is inside.
 //
 //-----------------------------------------------------------------------------
-float CylTest_CapsFirst(const octomap::point3d& pt1, const octomap::point3d& pt2,
-                        float lsq, float rsq, const octomap::point3d& pt)
+float CylTest_CapsFirst(const octomap::point3d& pt1, const octomap::point3d& pt2, float lsq, float rsq,
+                        const octomap::point3d& pt)
 {
   float dx, dy,
       dz;  // vector d  from
@@ -627,7 +602,7 @@ float CylTest_CapsFirst(const octomap::point3d& pt1, const octomap::point3d& pt2
   }
 }
 
-void Rrt::visualizeNode(geometry_msgs::Point pos, int id)
+void STLFrontierPlanner::visualizeNode(geometry_msgs::Point pos, int id)
 {
   visualization_msgs::Marker a;
   a.header.stamp = ros::Time::now();
@@ -652,7 +627,7 @@ void Rrt::visualizeNode(geometry_msgs::Point pos, int id)
   path_pub_.publish(a);
 }
 
-void Rrt::visualizePose(geometry_msgs::Pose pose, int id)
+void STLFrontierPlanner::visualizePose(geometry_msgs::Pose pose, int id)
 {
   visualization_msgs::Marker a;
   a.header.stamp = ros::Time::now();
@@ -676,7 +651,7 @@ void Rrt::visualizePose(geometry_msgs::Pose pose, int id)
   path_pub_.publish(a);
 }
 
-void Rrt::visualizeEdge(std::shared_ptr<RrtNode> node, int id)
+void STLFrontierPlanner::visualizeEdge(std::shared_ptr<RRTNode> node, int id)
 {
   visualization_msgs::Marker a;
   a.header.stamp = ros::Time::now();
@@ -691,8 +666,7 @@ void Rrt::visualizeEdge(std::shared_ptr<RrtNode> node, int id)
   a.pose.position.z = node->parent->pos[2];
   Eigen::Quaternion<double> q;
   Eigen::Vector3d init(1.0, 0.0, 0.0);
-  Eigen::Vector3d dir(node->pos[0] - node->parent->pos[0],
-                      node->pos[1] - node->parent->pos[1],
+  Eigen::Vector3d dir(node->pos[0] - node->parent->pos[0], node->pos[1] - node->parent->pos[1],
                       node->pos[2] - node->parent->pos[2]);
   q.setFromTwoVectors(init, dir);
   q.normalize();
@@ -713,7 +687,7 @@ void Rrt::visualizeEdge(std::shared_ptr<RrtNode> node, int id)
   path_pub_.publish(a);
 }
 
-void Rrt::visualizePath(std::shared_ptr<RrtNode> node)
+void STLFrontierPlanner::visualizePath(std::shared_ptr<RRTNode> node)
 {
   for (int id = 0; node->parent; ++id)
   {
@@ -730,8 +704,7 @@ void Rrt::visualizePath(std::shared_ptr<RrtNode> node)
     a.pose.position.z = node->parent->pos[2];
     Eigen::Quaternion<double> q;
     Eigen::Vector3d init(1.0, 0.0, 0.0);
-    Eigen::Vector3d dir(node->pos[0] - node->parent->pos[0],
-                        node->pos[1] - node->parent->pos[1],
+    Eigen::Vector3d dir(node->pos[0] - node->parent->pos[0], node->pos[1] - node->parent->pos[1],
                         node->pos[2] - node->parent->pos[2]);
     q.setFromTwoVectors(init, dir);
     q.normalize();
@@ -755,7 +728,7 @@ void Rrt::visualizePath(std::shared_ptr<RrtNode> node)
   }
 }
 
-void Rrt::visualizeGoals(std::vector<geometry_msgs::Pose> goals)
+void STLFrontierPlanner::visualizeGoals(std::vector<geometry_msgs::Pose> goals)
 {
   for (int i = 0; i < goals.size(); ++i)
   {
@@ -782,7 +755,7 @@ void Rrt::visualizeGoals(std::vector<geometry_msgs::Pose> goals)
   }
 }
 
-void Rrt::configCallback(rrtplanner::LTLConfig& config, uint32_t level)
+void STLFrontierPlanner::configCallback(stl_frontier_planner::STLConfig& config, uint32_t level)
 {
   ltl_lambda_ = config.lambda;
   ltl_min_distance_ = config.min_distance;
@@ -795,30 +768,27 @@ void Rrt::configCallback(rrtplanner::LTLConfig& config, uint32_t level)
   ltl_step_size_ = config.step_size;
 }
 
-void Rrt::routerCallback(const dd_gazebo_plugins::Router::ConstPtr& msg)
+void STLFrontierPlanner::routerCallback(const dd_gazebo_plugins::Router::ConstPtr& msg)
 {
   ltl_routers_[msg->id] = std::make_pair(msg->pose, msg->range);
 }
 
-bool Rrt::isInsideBoundaries(Eigen::Vector4d point)
+bool STLFrontierPlanner::isInsideBoundaries(Eigen::Vector4d point)
 {
-  return point[0] > boundary_min[0] and point[0] < boundary_max[0] and
-         point[1] > boundary_min[1] and point[1] < boundary_max[1] and
-         point[2] > boundary_min[2] and point[2] < boundary_max[2];
+  return point[0] > boundary_min[0] and point[0] < boundary_max[0] and point[1] > boundary_min[1] and
+         point[1] < boundary_max[1] and point[2] > boundary_min[2] and point[2] < boundary_max[2];
 }
 
-bool Rrt::isInsideBoundaries(Eigen::Vector3d point)
+bool STLFrontierPlanner::isInsideBoundaries(Eigen::Vector3d point)
 {
-  return point[0] > boundary_min[0] and point[0] < boundary_max[0] and
-         point[1] > boundary_min[1] and point[1] < boundary_max[1] and
-         point[2] > boundary_min[2] and point[2] < boundary_max[2];
+  return point[0] > boundary_min[0] and point[0] < boundary_max[0] and point[1] > boundary_min[1] and
+         point[1] < boundary_max[1] and point[2] > boundary_min[2] and point[2] < boundary_max[2];
 }
 
-bool Rrt::isInsideBoundaries(octomap::point3d point)
+bool STLFrontierPlanner::isInsideBoundaries(octomap::point3d point)
 {
-  return point.x() > boundary_min[0] and point.x() < boundary_max[0] and
-         point.y() > boundary_min[1] and point.y() < boundary_max[1] and
-         point.z() > boundary_min[2] and point.z() < boundary_max[2];
+  return point.x() > boundary_min[0] and point.x() < boundary_max[0] and point.y() > boundary_min[1] and
+         point.y() < boundary_max[1] and point.z() > boundary_min[2] and point.z() < boundary_max[2];
 }
 
-}  // namespace aeplanner_ns
+}  // namespace stl_frontier_planner
