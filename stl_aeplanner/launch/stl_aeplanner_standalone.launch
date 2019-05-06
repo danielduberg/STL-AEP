@@ -1,0 +1,9 @@
+<?xml version="1.0" ?>
+<launch>
+  <arg name="param_file" default="$(find stl_exploration)/config/exploration.yaml" />
+  <group ns="stl_aeplanner">
+
+    <include file="$(find stl_aeplanner)/launch/stl_aeplanner_nodelet.launch"/>
+  </group>
+</launch>
+

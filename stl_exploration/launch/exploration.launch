@@ -1,18 +1,17 @@
 <?xml version="1.0" ?>
 <launch>
-  <arg name="path" default="power_plant/stl" />
+  <arg name="path" default="aep_office/stl" />
 
   <arg name="param_file" default="$(find stl_exploration)/config/$(arg path).yaml" />
 
 
-  <group ns="aeplanner">
+  <group ns="stl_aeplanner">
     <node pkg="tf2_ros" type="static_transform_publisher" name="primesense_broadcaster" args="0.05 0 0.13 -1.57079633 0 -1.57079633 base_link camera_link" />
 
-    <include file="$(find aeplanner)/launch/aeplanner_nodelet.launch"/>
-    <include file="$(find pigain)/launch/pig_cpp.launch"/>
+    <include file="$(find stl_aeplanner)/launch/stl_aeplanner_nodelet.launch"/>
     <include file="$(find stl_exploration)/launch/fly_to.launch"/>
     <include file="$(find stl_exploration)/launch/octomap_server.launch"/>
-    <include file="$(find rrtplanner)/launch/rrtplanner.launch">
+    <include file="$(find stl_frontier_planner)/launch/stl_frontier_planner.launch">
       <arg name="path" value="$(arg path)" />
       <arg name="param_file" value="$(arg param_file)" />
     </include>

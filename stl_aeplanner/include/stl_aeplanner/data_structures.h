@@ -14,14 +14,13 @@
 
 #include <geometry_msgs/Pose.h>
 
-namespace aeplanner
+namespace stl_aeplanner
 {
 // Rtree
 typedef boost::geometry::model::point<double, 3, boost::geometry::cs::cartesian> point;
 typedef boost::geometry::model::box<point> box;
 
-typedef boost::geometry::index::rtree<point, boost::geometry::index::rstar<16>>
-    point_rtree;
+typedef boost::geometry::index::rtree<point, boost::geometry::index::rstar<16>> point_rtree;
 
 class RRTNode
 {
@@ -71,9 +70,8 @@ public:
     return new_node;
   }
 
-  double getDistanceGain(std::shared_ptr<point_rtree> rtree, double ltl_lambda,
-                         double min_distance, double max_distance,
-                         bool min_distance_active, bool max_distance_active,
+  double getDistanceGain(std::shared_ptr<point_rtree> rtree, double ltl_lambda, double min_distance,
+                         double max_distance, bool min_distance_active, bool max_distance_active,
                          double max_search_distance, double radius, double step_size)
   {
     if (!min_distance_active && !max_distance_active)
@@ -96,14 +94,13 @@ public:
     }
     Eigen::Vector3d end(state_[0], state_[1], state_[2]);
 
-    std::pair<double, double> closest_distance = getDistanceToClosestOccupiedBounded(
-        rtree, start, end, max_search_distance, radius, step_size);
+    std::pair<double, double> closest_distance =
+        getDistanceToClosestOccupiedBounded(rtree, start, end, max_search_distance, radius, step_size);
 
     double distance_gain = 0;
     if (min_distance_active && max_distance_active)
     {
-      distance_gain = std::min(closest_distance.first - min_distance,
-                               max_distance - closest_distance.second);
+      distance_gain = std::min(closest_distance.first - min_distance, max_distance - closest_distance.second);
     }
     else if (min_distance_active)
     {
@@ -117,11 +114,10 @@ public:
     return distance_gain;
   }
 
-  double score(std::shared_ptr<point_rtree> rtree, double ltl_lambda, double min_distance,
-               double max_distance, bool min_distance_active, bool max_distance_active,
-               double max_search_distance, double radius, double step_size,
-               std::map<int, std::pair<geometry_msgs::Pose, double>> routers,
-               bool routers_active, double lambda)
+  double score(std::shared_ptr<point_rtree> rtree, double ltl_lambda, double min_distance, double max_distance,
+               bool min_distance_active, bool max_distance_active, double max_search_distance, double radius,
+               double step_size, std::map<int, std::pair<geometry_msgs::Pose, double>> routers, bool routers_active,
+               double lambda)
   {
     if (score_rtree_ && parent_ == score_parent_)
     {
@@ -137,9 +133,8 @@ public:
       return score_;
     }
 
-    double distance_gain = getDistanceGain(rtree, ltl_lambda, min_distance, max_distance,
-                                           min_distance_active, max_distance_active,
-                                           max_search_distance, radius, step_size);
+    double distance_gain = getDistanceGain(rtree, ltl_lambda, min_distance, max_distance, min_distance_active,
+                                           max_distance_active, max_search_distance, radius, step_size);
 
     double max_router_difference = distance_gain;
     if (routers_active)
@@ -147,24 +142,18 @@ public:
       max_router_difference = getMaxRouterDifference(routers, step_size);
     }
 
-    score_ = this->parent_->score(rtree, ltl_lambda, min_distance, max_distance,
-                                  min_distance_active, max_distance_active,
-                                  max_search_distance, radius, step_size, routers,
-                                  routers_active, lambda) +
-             this->gain_ *
-                 exp(-lambda *
-                     (this->distance(this->parent_) *
-                      std::fmax(std::exp(-ltl_lambda *
-                                         std::min(distance_gain, max_router_difference)),
-                                1)));
+    score_ =
+        this->parent_->score(rtree, ltl_lambda, min_distance, max_distance, min_distance_active, max_distance_active,
+                             max_search_distance, radius, step_size, routers, routers_active, lambda) +
+        this->gain_ *
+            exp(-lambda * (this->distance(this->parent_) *
+                           std::fmax(std::exp(-ltl_lambda * std::min(distance_gain, max_router_difference)), 1)));
     return score_;
   }
 
-  double cost(std::shared_ptr<point_rtree> rtree, double ltl_lambda, double min_distance,
-              double max_distance, bool min_distance_active, bool max_distance_active,
-              double max_search_distance, double radius, double step_size,
-              std::map<int, std::pair<geometry_msgs::Pose, double>> routers,
-              bool routers_active)
+  double cost(std::shared_ptr<point_rtree> rtree, double ltl_lambda, double min_distance, double max_distance,
+              bool min_distance_active, bool max_distance_active, double max_search_distance, double radius,
+              double step_size, std::map<int, std::pair<geometry_msgs::Pose, double>> routers, bool routers_active)
   {
     if (cost_rtree_ && parent_ == cost_parent_)
     {
@@ -180,9 +169,8 @@ public:
       return cost_;
     }
 
-    double distance_gain = getDistanceGain(rtree, ltl_lambda, min_distance, max_distance,
-                                           min_distance_active, max_distance_active,
-                                           max_search_distance, radius, step_size);
+    double distance_gain = getDistanceGain(rtree, ltl_lambda, min_distance, max_distance, min_distance_active,
+                                           max_distance_active, max_search_distance, radius, step_size);
 
     double max_router_difference = distance_gain;
     if (routers_active)
@@ -190,18 +178,14 @@ public:
       max_router_difference = getMaxRouterDifference(routers, step_size);
     }
 
-    cost_ =
-        (this->distance(this->parent_) *
-         std::fmax(std::exp(-ltl_lambda * std::min(distance_gain, max_router_difference)),
-                   1)) +
-        this->parent_->cost(rtree, ltl_lambda, min_distance, max_distance,
-                            min_distance_active, max_distance_active, max_search_distance,
-                            radius, step_size, routers, routers_active);
+    cost_ = (this->distance(this->parent_) *
+             std::fmax(std::exp(-ltl_lambda * std::min(distance_gain, max_router_difference)), 1)) +
+            this->parent_->cost(rtree, ltl_lambda, min_distance, max_distance, min_distance_active, max_distance_active,
+                                max_search_distance, radius, step_size, routers, routers_active);
     return cost_;
   }
 
-  double getMaxRouterDifference(
-      std::map<int, std::pair<geometry_msgs::Pose, double>> routers, double step_size)
+  double getMaxRouterDifference(std::map<int, std::pair<geometry_msgs::Pose, double>> routers, double step_size)
   {
     Eigen::Vector3d start;
     if (parent_)
@@ -222,32 +206,26 @@ public:
 
     for (auto it = routers.begin(); it != routers.end(); ++it)
     {
-      Eigen::Vector3d point(it->second.first.position.x, it->second.first.position.y,
-                            it->second.first.position.z);
+      Eigen::Vector3d point(it->second.first.position.x, it->second.first.position.y, it->second.first.position.z);
 
-      std::pair<double, double> distance =
-          getDistanceToPositionAlongLine(start, end, point, step_size);
+      std::pair<double, double> distance = getDistanceToPositionAlongLine(start, end, point, step_size);
 
-      max_router_difference =
-          std::max(max_router_difference, it->second.second - distance.second);
+      max_router_difference = std::max(max_router_difference, it->second.second - distance.second);
     }
 
     return max_router_difference;
   }
 
-  static double getMaxRouterDifference(
-      Eigen::Vector3d start, Eigen::Vector3d end,
-      std::map<int, std::pair<geometry_msgs::Pose, double>> routers, double step_size)
+  static double getMaxRouterDifference(Eigen::Vector3d start, Eigen::Vector3d end,
+                                       std::map<int, std::pair<geometry_msgs::Pose, double>> routers, double step_size)
   {
     double max_router_difference = 10000000;
 
     for (auto it = routers.begin(); it != routers.end(); ++it)
     {
-      Eigen::Vector3d point(it->second.first.position.x, it->second.first.position.y,
-                            it->second.first.position.z);
+      Eigen::Vector3d point(it->second.first.position.x, it->second.first.position.y, it->second.first.position.z);
 
-      std::pair<double, double> distance =
-          getDistanceToPositionAlongLine(start, end, point, step_size);
+      std::pair<double, double> distance = getDistanceToPositionAlongLine(start, end, point, step_size);
 
       max_router_difference = std::min(max_router_difference, distance.second);
     }
@@ -255,15 +233,12 @@ public:
     return max_router_difference;
   }
 
-  static std::pair<double, double> getDistanceToPositionAlongLine(Eigen::Vector3d start,
-                                                                  Eigen::Vector3d end,
-                                                                  Eigen::Vector3d point,
-                                                                  double step_size)
+  static std::pair<double, double> getDistanceToPositionAlongLine(Eigen::Vector3d start, Eigen::Vector3d end,
+                                                                  Eigen::Vector3d point, double step_size)
   {
     double current_distance = (point - start).norm();
 
-    std::pair<double, double> closest =
-        std::make_pair(current_distance, current_distance);
+    std::pair<double, double> closest = std::make_pair(current_distance, current_distance);
 
     for (double i = step_size; i < 1.0; i += step_size)
     {
@@ -282,16 +257,15 @@ public:
     return closest;
   }
 
-  static std::pair<double, double> getDistanceToClosestOccupiedBounded(
-      std::shared_ptr<point_rtree> rtree, Eigen::Vector3d start, Eigen::Vector3d end,
-      double max_search_distance, double radius, double step_size)
+  static std::pair<double, double> getDistanceToClosestOccupiedBounded(std::shared_ptr<point_rtree> rtree,
+                                                                       Eigen::Vector3d start, Eigen::Vector3d end,
+                                                                       double max_search_distance, double radius,
+                                                                       double step_size)
   {
     point bbx_min(std::min(start[0] - radius, end[0] - max_search_distance),
-                  std::min(start[1] - radius, end[1] - max_search_distance),
-                  std::min(start[2], end[2]) - radius);
+                  std::min(start[1] - radius, end[1] - max_search_distance), std::min(start[2], end[2]) - radius);
     point bbx_max(std::max(start[0] + radius, end[0] + max_search_distance),
-                  std::max(start[1] + radius, end[1] + max_search_distance),
-                  std::max(start[2], end[2]) + radius);
+                  std::max(start[1] + radius, end[1] + max_search_distance), std::max(start[2], end[2]) + radius);
 
     box query_box(bbx_min, bbx_max);
     std::vector<point> hits;
@@ -309,8 +283,7 @@ public:
       points.push_back(end);
     }
 
-    std::vector<std::vector<double>> closest(
-        omp_get_max_threads(), std::vector<double>(points.size(), 10000000));
+    std::vector<std::vector<double>> closest(omp_get_max_threads(), std::vector<double>(points.size(), 10000000));
 
     double max_search_distance_squared = std::pow(max_search_distance, 2.0);
 
@@ -319,8 +292,7 @@ public:
     {
       Eigen::Vector3d point(hits[i].get<0>(), hits[i].get<1>(), hits[i].get<2>());
 
-      if (point[2] < std::min(start[2], end[2]) ||
-          point[2] > std::max(start[2], end[2]) + 0.1)
+      if (point[2] < std::min(start[2], end[2]) || point[2] > std::max(start[2], end[2]) + 0.1)
       {
         continue;
       }
@@ -334,8 +306,7 @@ public:
           continue;
         }
 
-        closest[omp_get_thread_num()][j] =
-            std::min(closest[omp_get_thread_num()][j], distance_squared);
+        closest[omp_get_thread_num()][j] = std::min(closest[omp_get_thread_num()][j], distance_squared);
       }
     }
 
@@ -360,6 +331,6 @@ public:
     return (p3 - q3).norm();
   }
 };  // namespace aeplanner
-}  // namespace aeplanner
+}  // namespace stl_aeplanner
 
 #endif

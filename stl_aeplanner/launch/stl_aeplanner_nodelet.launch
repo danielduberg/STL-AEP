@@ -1,0 +1,9 @@
+<?xml version="1.0" ?>
+<launch>
+  <arg name="nodelet_mode" default="standalone"/>
+  <node pkg="nodelet" type="nodelet" name="stl_aeplanner_nodelet_manager"  args="manager" output="screen"/>
+  <node pkg="nodelet" type="nodelet" name="STLAEPlannerNodelet" args="$(arg nodelet_mode) stl_aeplanner/STLAEPlannerNodelet stl_aeplanner_nodelet_manager" output="screen">
+    <remap from="octomap" to="octomap_full"/>
+    <remap from="agent_pose" to="/mavros/local_position/pose"/>
+  </node>
+</launch>

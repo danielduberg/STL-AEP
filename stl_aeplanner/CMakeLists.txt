@@ -1,10 +1,10 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(aeplanner)
+project(stl_aeplanner)
 
 add_compile_options(-std=c++11)
 
 find_package(catkin REQUIRED COMPONENTS
-  aeplanner_msgs
+  stl_aeplanner_msgs
   dd_gazebo_plugins
   roscpp
   geometry_msgs
@@ -37,7 +37,7 @@ endif()
 # )
 # add_action_files(
 #   DIRECTORY action 
-#   FILES aeplanner.action
+#   FILES stl_aeplanner.action
 # )
 # add_service_files(
 #   DIRECTORY srv
@@ -54,13 +54,13 @@ endif()
 
 ## Generate dynamic reconfigure parameters in the 'cfg' folder
 generate_dynamic_reconfigure_options(
-  cfg/LTL.cfg
+  cfg/STL.cfg
 )
 
 catkin_package(
   INCLUDE_DIRS include ${Eigen_INCLUDE_DIRS} ${OCTOMAP_INCLUDE_DIRS} ${catkin_INCLUDE_DIRS}
-  LIBRARIES aeplanner ${catkin_LIBRARIES} ${OCTOMAP_LIBRARIES} ${OpenMP_LIBS}
-  CATKIN_DEPENDS aeplanner_msgs dd_gazebo_plugins message_runtime roscpp geometry_msgs visualization_msgs tf
+  LIBRARIES stl_aeplanner ${catkin_LIBRARIES} ${OCTOMAP_LIBRARIES} ${OpenMP_LIBS}
+  CATKIN_DEPENDS stl_aeplanner_msgs dd_gazebo_plugins message_runtime roscpp geometry_msgs visualization_msgs tf
 )
 
 include_directories(
@@ -70,30 +70,30 @@ include_directories(
   ${OCTOMAP_INCLUDE_DIRS}
 )
 
-add_library(aeplanner src/aeplanner_nodelet.cpp src/aeplanner.cpp src/aeplanner_viz.cpp src/param.cpp)
-target_compile_options(aeplanner PRIVATE ${OpenMP_FLAGS})
-target_link_libraries(aeplanner
+add_library(stl_aeplanner src/stl_aeplanner_nodelet.cpp src/stl_aeplanner.cpp src/stl_aeplanner_viz.cpp src/param.cpp)
+target_compile_options(stl_aeplanner PRIVATE ${OpenMP_FLAGS})
+target_link_libraries(stl_aeplanner
   ${catkin_LIBRARIES}
   ${OCTOMAP_LIBRARIES}
   ${OpenMP_LIBS}
 )
-add_dependencies(aeplanner
+add_dependencies(stl_aeplanner
   ${catkin_EXPORTED_TARGETS} 
   ${${PROJECT_NAME}_EXPORTED_TARGETS} 
-  aeplanner_ref_generate_messages_cpp
+  stl_aeplanner_ref_generate_messages_cpp
   ${PROJECT_NAME}_gencfg
 )
 
-add_executable(aeplanner_node src/aeplanner_node.cpp src/aeplanner.cpp src/aeplanner_viz.cpp src/param.cpp)
-target_compile_options(aeplanner_node PRIVATE ${OpenMP_FLAGS})
-target_link_libraries(aeplanner_node
+add_executable(stl_aeplanner_node src/stl_aeplanner_node.cpp src/stl_aeplanner.cpp src/stl_aeplanner_viz.cpp src/param.cpp)
+target_compile_options(stl_aeplanner_node PRIVATE ${OpenMP_FLAGS})
+target_link_libraries(stl_aeplanner_node
   ${catkin_LIBRARIES}
   ${OCTOMAP_LIBRARIES}
   ${OpenMP_LIBS}
 )
-add_dependencies(aeplanner_node
+add_dependencies(stl_aeplanner_node
   ${catkin_EXPORTED_TARGETS} 
   ${${PROJECT_NAME}_EXPORTED_TARGETS} 
-  aeplanner_ref_generate_messages_cpp
+  stl_aeplanner_ref_generate_messages_cpp
   ${PROJECT_NAME}_gencfg
 )

@@ -1,7 +1,7 @@
-<library path="lib/libaeplanner">
-  <class name="aeplanner/AEPlannerNodelet" type="aeplanner::AEPlannerNodelet" base_class_type="nodelet::Nodelet">
+<library path="lib/libstl_aeplanner">
+  <class name="stl_aeplanner/STLAEPlannerNodelet" type="stl_aeplanner::STLAEPlannerNodelet" base_class_type="nodelet::Nodelet">
     <description>
-      This is the Autonomous Planner Nodelet.
+      This is the STL Autonomous Planner Nodelet.
     </description>
   </class>
 </library>
