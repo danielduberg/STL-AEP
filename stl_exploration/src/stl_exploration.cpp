@@ -129,7 +129,7 @@ int main(int argc, char** argv)
     goal.pose.pose.position.y = initial_positions[i][1];
     goal.pose.pose.position.z = initial_positions[i][2];
     goal.pose.pose.orientation = tf::createQuaternionMsgFromYaw(initial_positions[i][3]);
-    goal.distance_converged = 0.1;
+    goal.distance_converged = 0.3;
     goal.yaw_converged = 0.1 * M_PI;
     last_pose.pose = goal.pose.pose;
 
