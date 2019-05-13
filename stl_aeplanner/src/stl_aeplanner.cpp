@@ -81,7 +81,8 @@ void STLAEPlanner::execute(const stl_aeplanner_msgs::aeplannerGoalConstPtr& goal
   if (root->gain_ > 0.75 or !root->children_.size() or
       root->score(stl_rtree, ltl_lambda_, ltl_min_distance_, ltl_max_distance_, ltl_min_distance_active_,
                   ltl_max_distance_active_, ltl_max_search_distance_, params_.bounding_radius, ltl_step_size_,
-                  ltl_routers_, ltl_routers_active_, params_.lambda) < params_.zero_gain)
+                  ltl_routers_, ltl_routers_active_, params_.lambda, ltl_min_altitude_, ltl_max_altitude_,
+                  ltl_min_altitude_active_, ltl_max_altitude_active_) < params_.zero_gain)
   {
     expandRRT(ot, &rtree, stl_rtree, current_state);
   }
@@ -94,10 +95,11 @@ void STLAEPlanner::execute(const stl_aeplanner_msgs::aeplannerGoalConstPtr& goal
   best_branch_root_ = best_node_->getCopyOfParentBranch();
 
   ROS_WARN("createRRTMarker");
-  rrt_marker_pub_.publish(createRRTMarkerArray(root, stl_rtree, current_state, ltl_lambda_, ltl_min_distance_,
-                                               ltl_max_distance_, ltl_min_distance_active_, ltl_max_distance_active_,
-                                               ltl_max_search_distance_, params_.bounding_radius, ltl_step_size_,
-                                               ltl_routers_, ltl_routers_active_, params_.lambda));
+  rrt_marker_pub_.publish(
+      createRRTMarkerArray(root, stl_rtree, current_state, ltl_lambda_, ltl_min_distance_, ltl_max_distance_,
+                           ltl_min_distance_active_, ltl_max_distance_active_, ltl_max_search_distance_,
+                           params_.bounding_radius, ltl_step_size_, ltl_routers_, ltl_routers_active_, params_.lambda,
+                           ltl_min_altitude_active_, ltl_max_altitude_active_, ltl_min_altitude_, ltl_max_altitude_));
   ROS_WARN("publishRecursive");
   publishEvaluatedNodesRecursive(root);
 
@@ -105,10 +107,12 @@ void STLAEPlanner::execute(const stl_aeplanner_msgs::aeplannerGoalConstPtr& goal
   result.pose.pose = vecToPose(best_branch_root_->children_[0]->state_);
   if (best_node_->score(stl_rtree, ltl_lambda_, ltl_min_distance_, ltl_max_distance_, ltl_min_distance_active_,
                         ltl_max_distance_active_, ltl_max_search_distance_, params_.bounding_radius, ltl_step_size_,
-                        ltl_routers_, ltl_routers_active_, params_.lambda) > params_.zero_gain)
+                        ltl_routers_, ltl_routers_active_, params_.lambda, ltl_min_altitude_, ltl_max_altitude_,
+                        ltl_min_altitude_active_, ltl_max_altitude_active_) > params_.zero_gain)
     result.is_clear = true;
   else
   {
+    ROS_WARN("Getting frontiers");
     result.frontiers = getFrontiers();
     result.is_clear = false;
     best_branch_root_ = NULL;
@@ -195,7 +199,8 @@ void STLAEPlanner::expandRRT(std::shared_ptr<octomap::OcTree> ot, value_rtree* r
         (n < params_.cutoff_iterations and
          best_node_->score(stl_rtree, ltl_lambda_, ltl_min_distance_, ltl_max_distance_, ltl_min_distance_active_,
                            ltl_max_distance_active_, ltl_max_search_distance_, params_.bounding_radius, ltl_step_size_,
-                           ltl_routers_, ltl_routers_active_, params_.lambda) < params_.zero_gain)) and
+                           ltl_routers_, ltl_routers_active_, params_.lambda, ltl_min_altitude_, ltl_max_altitude_,
+                           ltl_min_altitude_active_, ltl_max_altitude_active_) < params_.zero_gain)) and
        ros::ok();
        ++n)
   {
@@ -259,10 +264,12 @@ void STLAEPlanner::expandRRT(std::shared_ptr<octomap::OcTree> ot, value_rtree* r
     if (!best_node_ or
         new_node->score(stl_rtree, ltl_lambda_, ltl_min_distance_, ltl_max_distance_, ltl_min_distance_active_,
                         ltl_max_distance_active_, ltl_max_search_distance_, params_.bounding_radius, ltl_step_size_,
-                        ltl_routers_, ltl_routers_active_, params_.lambda) >
+                        ltl_routers_, ltl_routers_active_, params_.lambda, ltl_min_altitude_, ltl_max_altitude_,
+                        ltl_min_altitude_active_, ltl_max_altitude_active_) >
             best_node_->score(stl_rtree, ltl_lambda_, ltl_min_distance_, ltl_max_distance_, ltl_min_distance_active_,
                               ltl_max_distance_active_, ltl_max_search_distance_, params_.bounding_radius,
-                              ltl_step_size_, ltl_routers_, ltl_routers_active_, params_.lambda))
+                              ltl_step_size_, ltl_routers_, ltl_routers_active_, params_.lambda, ltl_min_altitude_,
+                              ltl_max_altitude_, ltl_min_altitude_active_, ltl_max_altitude_active_))
       best_node_ = new_node;
 
     ROS_DEBUG_STREAM("iteration Done!");
@@ -302,10 +309,10 @@ std::shared_ptr<RRTNode> STLAEPlanner::chooseParent(const value_rtree& rtree, st
   {
     std::shared_ptr<RRTNode> current_node = item.second;
 
-    double current_cost =
-        current_node->cost(stl_rtree, ltl_lambda_, ltl_min_distance_, ltl_max_distance_, ltl_min_distance_active_,
-                           ltl_max_distance_active_, ltl_max_search_distance_, params_.bounding_radius, ltl_step_size_,
-                           ltl_routers_, ltl_routers_active_);
+    double current_cost = current_node->cost(
+        stl_rtree, ltl_lambda_, ltl_min_distance_, ltl_max_distance_, ltl_min_distance_active_,
+        ltl_max_distance_active_, ltl_max_search_distance_, params_.bounding_radius, ltl_step_size_, ltl_routers_,
+        ltl_routers_active_, ltl_min_altitude_, ltl_max_altitude_, ltl_min_altitude_active_, ltl_max_altitude_active_);
 
     if (!best_node || current_cost < best_cost)
     {
@@ -327,9 +334,10 @@ void STLAEPlanner::rewire(const value_rtree& rtree, std::shared_ptr<point_rtree>
 
   Eigen::Vector3d p1(new_node->state_[0], new_node->state_[1], new_node->state_[2]);
 
-  double new_cost = new_node->cost(stl_rtree, ltl_lambda_, ltl_min_distance_, ltl_max_distance_,
-                                   ltl_min_distance_active_, ltl_max_distance_active_, ltl_max_search_distance_,
-                                   params_.bounding_radius, ltl_step_size_, ltl_routers_, ltl_routers_active_);
+  double new_cost = new_node->cost(
+      stl_rtree, ltl_lambda_, ltl_min_distance_, ltl_max_distance_, ltl_min_distance_active_, ltl_max_distance_active_,
+      ltl_max_search_distance_, params_.bounding_radius, ltl_step_size_, ltl_routers_, ltl_routers_active_,
+      ltl_min_altitude_, ltl_max_altitude_, ltl_min_altitude_active_, ltl_max_altitude_active_);
 
 #pragma omp parallel for
   for (size_t i = 0; i < nearest.size(); ++i)
@@ -339,7 +347,8 @@ void STLAEPlanner::rewire(const value_rtree& rtree, std::shared_ptr<point_rtree>
 
     if (current_node->cost(stl_rtree, ltl_lambda_, ltl_min_distance_, ltl_max_distance_, ltl_min_distance_active_,
                            ltl_max_distance_active_, ltl_max_search_distance_, params_.bounding_radius, ltl_step_size_,
-                           ltl_routers_, ltl_routers_active_) > new_cost + (p1 - p2).norm())
+                           ltl_routers_, ltl_routers_active_, ltl_min_altitude_, ltl_max_altitude_,
+                           ltl_min_altitude_active_, ltl_max_altitude_active_) > new_cost + (p1 - p2).norm())
     {
       if (!collisionLine(stl_rtree, new_node->state_, current_node->state_, r))
       {
@@ -862,6 +871,8 @@ void STLAEPlanner::agentPoseCallback(const geometry_msgs::PoseStamped& msg)
     ltl_stats.header.stamp = ros::Time::now();
     ltl_stats.ltl_min_distance = (ltl_min_distance_active_) ? ltl_min_distance_ : -1;
     ltl_stats.ltl_max_distance = (ltl_max_distance_active_) ? ltl_max_distance_ : -1;
+    ltl_stats.ltl_min_altitude = (ltl_min_altitude_active_) ? ltl_min_altitude_ : -1;
+    ltl_stats.ltl_max_altitude = (ltl_max_altitude_active_) ? ltl_max_altitude_ : -1;
 
     Eigen::Vector3d position(current_state_[0], current_state_[1], current_state_[2]);
 
@@ -901,6 +912,29 @@ void STLAEPlanner::agentPoseCallback(const geometry_msgs::PoseStamped& msg)
     ltl_stats.closest_router_distance =
         (ltl_routers_active_) ? RRTNode::getMaxRouterDifference(position, position, ltl_routers_, ltl_step_size_) : -1;
 
+    // Altitude
+    std::pair<double, double> closest_altitude = RRTNode::getAltitudeClosestOccupiedBounded(
+        rtree, position, position, ltl_max_search_distance_, params_.bounding_radius, ltl_step_size_);
+
+    if (closest_altitude.first >= ltl_max_search_distance_)
+    {
+      return;
+    }
+
+    ltl_stats.current_closest_altitude = closest_altitude.first;
+
+    if (ltl_iterations_ == 1)
+    {
+      ltl_mean_closest_altitude_ = closest_altitude.first;
+    }
+    else
+    {
+      ltl_mean_closest_altitude_ += (closest_altitude.first - ltl_mean_closest_altitude_) / ltl_iterations_;
+    }
+
+    ltl_stats.mean_closest_altitude = ltl_mean_closest_altitude_;
+
+    // Publish
     ltl_stats_pub_.publish(ltl_stats);
   }
 }
@@ -1070,6 +1104,11 @@ void STLAEPlanner::configCallback(stl_aeplanner::STLConfig& config, uint32_t lev
   ltl_dist_add_path_ = config.distance_add_path;
   ltl_max_search_distance_ = config.max_search_distance;
   ltl_step_size_ = config.step_size;
+
+  ltl_min_altitude_ = config.min_altitude;
+  ltl_max_altitude_ = config.max_altitude;
+  ltl_min_altitude_active_ = config.min_altitude_active;
+  ltl_max_altitude_active_ = config.max_altitude_active;
 }
 
 void STLAEPlanner::routerCallback(const dd_gazebo_plugins::Router::ConstPtr& msg)

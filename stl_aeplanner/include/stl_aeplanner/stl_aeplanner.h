@@ -75,8 +75,12 @@ private:
   double ltl_lambda_;
   double ltl_min_distance_;
   double ltl_max_distance_;
+  double ltl_min_altitude_;
+  double ltl_max_altitude_;
   bool ltl_min_distance_active_;
   bool ltl_max_distance_active_;
+  bool ltl_min_altitude_active_;
+  bool ltl_max_altitude_active_;
   bool ltl_routers_active_;
   dynamic_reconfigure::Server<stl_aeplanner::STLConfig> ltl_cs_;
   dynamic_reconfigure::Server<stl_aeplanner::STLConfig>::CallbackType ltl_f_;
@@ -87,6 +91,8 @@ private:
   int ltl_iterations_;
   double ltl_mean_closest_distance_;
   std::vector<double> ltl_closest_distance_;
+  double ltl_mean_closest_altitude_;
+  std::vector<double> ltl_closest_altitude_;
   double ltl_max_search_distance_;
   std::vector<std::pair<octomap::point3d, double>> ltl_search_distances_;
   double ltl_step_size_;
