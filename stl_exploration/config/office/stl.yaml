@@ -37,7 +37,7 @@ world_frame: "map"
 boundary/min: [ -2.0,  -2.0, 0.2]
 boundary/max: [ 8.0,   10.0,  2.5]
 
-lambda: 5.0
+lambda: 0.25
 min_distance: 0.6
 max_distance: 3.0
 min_distance_active: true
@@ -46,3 +46,7 @@ routers_active: false
 distance_add_path: 0.1
 max_search_distance: 10.0
 step_size: 0.1
+min_altitude: 0.0
+max_altitude: 40.0
+min_altitude_active: false
+max_altitude_active: false

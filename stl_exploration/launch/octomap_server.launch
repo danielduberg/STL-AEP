@@ -8,7 +8,7 @@
 		<param name="frame_id" type="string" value="map" />
 		
 		<!-- maximum range to integrate (speedup!) -->
-		<param name="sensor_model/max_range" value="6.9" />
+		<param name="sensor_model/max_range" value="7.0" />
 
     <remap from="cloud_in" to="/virtual_camera/depth/points" />
 	</node>

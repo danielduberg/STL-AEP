@@ -1,6 +1,6 @@
 <?xml version="1.0" ?>
 <launch>
-  <arg name="path" default="aep_office/stl" />
+  <arg name="path" default="empty_room_big/stl" />
 
   <arg name="param_file" default="$(find stl_exploration)/config/$(arg path).yaml" />
 
@@ -15,11 +15,14 @@
       <arg name="path" value="$(arg path)" />
       <arg name="param_file" value="$(arg param_file)" />
     </include>
-
+    <include file="$(find pigain)/launch/pig_cpp.launch" />
 
     <node name="stl_exploration" pkg="stl_exploration" type="stl_exploration" output="screen" />
     <rosparam command="load" file="$(arg param_file)" />
   </group>
+
+  <!-- Increase Mavros publishing frequency -->
+  <!-- <node name="mavros_mavcmd" pkg="mavros" type="mavcmd" args="-n /mavros long 511 32 100000 0 0 0 0 0" /> -->
 
   <!-- Nodelet manager for camera-->
   <node pkg="nodelet" type="nodelet" args="manager"
@@ -34,8 +37,11 @@ name="camera_manager" output="screen"/>
 
   <node pkg="stl_exploration" type="image_maxing.py" name="image_maxing" output="screen" />
 
-  <node pkg="stl_evaluation" type="stl_evaluation_node" name="std_evaluation_node" output="screen" required="true">
+  <node pkg="stl_evaluation" type="stl_evaluation_node" name="stl_evaluation_node" output="screen" required="true">
     <rosparam command="load" file="$(arg param_file)" />
   </node>
+
   
+  <node pkg="rosbag" type="record" name="rosbag_record" output="screen" args="--lz4 -a -o /home/dduberg/ros_ws/catkin_ws/src/stl_aep/stl_evaluation/rosbags/$(arg path) -x '/camera/(.*)|/virtual_camera/(.*)|/scan|/stl_aeplanner/octomap_binary'"/>
+
 </launch>
