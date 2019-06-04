@@ -1,6 +1,6 @@
 <?xml version="1.0" ?>
 <launch>
-  <arg name="path" default="empty_room_big/stl" />
+  <arg name="path" default="aep_office/stl" />
 
   <arg name="param_file" default="$(find stl_exploration)/config/$(arg path).yaml" />
 
