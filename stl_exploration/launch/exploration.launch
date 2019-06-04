@@ -41,7 +41,4 @@ name="camera_manager" output="screen"/>
     <rosparam command="load" file="$(arg param_file)" />
   </node>
 
-  
-  <node pkg="rosbag" type="record" name="rosbag_record" output="screen" args="--lz4 -a -o /home/dduberg/ros_ws/catkin_ws/src/stl_aep/stl_evaluation/rosbags/$(arg path) -x '/camera/(.*)|/virtual_camera/(.*)|/scan|/stl_aeplanner/octomap_binary'"/>
-
 </launch>
