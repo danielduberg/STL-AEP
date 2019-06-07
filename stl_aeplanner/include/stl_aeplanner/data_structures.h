@@ -22,7 +22,7 @@ typedef boost::geometry::model::box<point> box;
 
 typedef boost::geometry::index::rtree<point, boost::geometry::index::rstar<16>> point_rtree;
 
-class RRTNode
+class RRTNode : public std::enable_shared_from_this<RRTNode>
 {
 public:
   Eigen::Vector4d state_;
@@ -44,8 +44,7 @@ public:
 
   std::shared_ptr<RRTNode> getCopyOfParentBranch()
   {
-    // TODO: FIX
-    std::shared_ptr<RRTNode> current_node = std::make_shared<RRTNode>(*this);
+    std::shared_ptr<RRTNode> current_node = shared_from_this();
     std::shared_ptr<RRTNode> new_node;
     std::shared_ptr<RRTNode> new_child_node = NULL;
 
