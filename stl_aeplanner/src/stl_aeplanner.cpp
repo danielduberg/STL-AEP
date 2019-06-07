@@ -248,7 +248,7 @@ void STLAEPlanner::expandRRT(std::shared_ptr<octomap::OcTree> ot, value_rtree* r
     nearest->children_.push_back(new_node);
 
     // rewire tree with new node
-    rewire(*rtree, stl_rtree, nearest, params_.extension_range, params_.bounding_radius, params_.d_overshoot_);
+    rewire(*rtree, stl_rtree, new_node, params_.extension_range, params_.bounding_radius, params_.d_overshoot_);
 
     // Calculate potential information gain for new_node
     ROS_DEBUG_STREAM("Get gain");
@@ -329,8 +329,10 @@ void STLAEPlanner::rewire(const value_rtree& rtree, std::shared_ptr<point_rtree>
 {
   // TODO: How many neighbours to look for?
   std::vector<value> nearest;
-  rtree.query(boost::geometry::index::nearest(point(new_node->state_[0], new_node->state_[1], new_node->state_[2]), 15),
-              std::back_inserter(nearest));
+  point bbx_min(new_node->state_[0] - l, new_node->state_[1] - l, new_node->state_[2] - l);
+  point bbx_max(new_node->state_[0] + l, new_node->state_[1] + l, new_node->state_[2] + l);
+  box query_box(bbx_min, bbx_max);
+  rtree.query(boost::geometry::index::intersects(query_box), std::back_inserter(nearest));
 
   Eigen::Vector3d p1(new_node->state_[0], new_node->state_[1], new_node->state_[2]);
 
