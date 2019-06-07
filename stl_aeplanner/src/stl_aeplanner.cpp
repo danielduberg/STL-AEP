@@ -345,6 +345,12 @@ void STLAEPlanner::rewire(const value_rtree& rtree, std::shared_ptr<point_rtree>
   for (size_t i = 0; i < nearest.size(); ++i)
   {
     std::shared_ptr<RRTNode> current_node = nearest[i].second;
+    
+    if (current_node == root_ || current_node == new_node)
+    {
+      continue;
+    }
+    
     Eigen::Vector3d p2(current_node->state_[0], current_node->state_[1], current_node->state_[2]);
 
     if (current_node->cost(stl_rtree, ltl_lambda_, ltl_min_distance_, ltl_max_distance_, ltl_min_distance_active_,
