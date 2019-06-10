@@ -52,6 +52,7 @@ private:
   bool current_state_initialized_;
 
   // Keep track of the best node and its score
+  std::shared_ptr<RRTNode> root_;
   std::shared_ptr<RRTNode> best_node_;
   std::shared_ptr<RRTNode> best_branch_root_;
 
