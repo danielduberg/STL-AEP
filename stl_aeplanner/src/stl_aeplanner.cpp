@@ -341,7 +341,6 @@ void STLAEPlanner::rewire(const value_rtree& rtree, std::shared_ptr<point_rtree>
       ltl_max_search_distance_, params_.bounding_radius, ltl_step_size_, ltl_routers_, ltl_routers_active_,
       ltl_min_altitude_, ltl_max_altitude_, ltl_min_altitude_active_, ltl_max_altitude_active_);
 
-#pragma omp parallel for
   for (size_t i = 0; i < nearest.size(); ++i)
   {
     std::shared_ptr<RRTNode> current_node = nearest[i].second;
