@@ -101,6 +101,7 @@ int main(int argc, char** argv)
   // allows the planning of initial paths.
   ROS_INFO("Starting the planner: Performing initialization motion");
   geometry_msgs::PoseStamped last_pose;
+  last_pose.header.frame_id = "map";
 
   ros::ServiceClient arm_client = nh.serviceClient<mavros_msgs::CommandBool>("/mavros/"
                                                                              "cmd/"
@@ -158,6 +159,7 @@ int main(int argc, char** argv)
 
     while (!aep_ac.waitForResult(ros::Duration(0.05)))
     {
+      last_pose.header.stamp = ros::Time::now();
       pub.publish(last_pose);
     }
 
@@ -203,6 +205,7 @@ int main(int argc, char** argv)
       rrt_ac.sendGoal(rrt_goal);
       while (!rrt_ac.waitForResult(ros::Duration(0.05)))
       {
+        last_pose.header.stamp = ros::Time::now();
         pub.publish(last_pose);
       }
       nav_msgs::Path path = rrt_ac.getResult()->path;
