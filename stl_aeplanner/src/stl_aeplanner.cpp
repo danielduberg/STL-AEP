@@ -327,7 +327,6 @@ std::shared_ptr<RRTNode> STLAEPlanner::chooseParent(const value_rtree& rtree, st
 void STLAEPlanner::rewire(const value_rtree& rtree, std::shared_ptr<point_rtree> stl_rtree,
                           std::shared_ptr<RRTNode> new_node, double l, double r, double r_os)
 {
-  // TODO: How many neighbours to look for?
   std::vector<value> nearest;
   point bbx_min(new_node->state_[0] - l, new_node->state_[1] - l, new_node->state_[2] - l);
   point bbx_max(new_node->state_[0] + l, new_node->state_[1] + l, new_node->state_[2] + l);
@@ -359,7 +358,9 @@ void STLAEPlanner::rewire(const value_rtree& rtree, std::shared_ptr<point_rtree>
     {
       if (!collisionLine(stl_rtree, new_node->state_, current_node->state_, r))
       {
+        current_node->parent_->children_.erase(std::remove(current_node->parent_->children_.begin(), current_node->parent_->children_.end(), current_node), current_node->parent_->children_.end());
         current_node->parent_ = new_node;
+        new_node->children_.push_back(current_node);
       }
     }
   }
