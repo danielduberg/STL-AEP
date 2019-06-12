@@ -1,6 +1,6 @@
 <?xml version="1.0" ?>
 <launch>
-  <arg name="path" default="aep_office/stl" />
+  <arg name="path" default="real_world/stl" />
 
   <arg name="param_file" default="$(find stl_exploration)/config/$(arg path).yaml" />
 
@@ -15,7 +15,6 @@
       <arg name="path" value="$(arg path)" />
       <arg name="param_file" value="$(arg param_file)" />
     </include>
-    <include file="$(find pigain)/launch/pig_cpp.launch" />
 
     <node name="stl_exploration" pkg="stl_exploration" type="stl_exploration" output="screen" />
     <rosparam command="load" file="$(arg param_file)" />
@@ -33,6 +32,12 @@ name="camera_manager" output="screen"/>
     <remap from="image_rect" to="/virtual_camera/depth/image_raw" />
     <remap from="points" to="/virtual_camera/depth/points" />
     <param name="queue_size" value="100" />
+  </node>
+
+  <node pkg="nodelet" type="nodelet" name="image_to_laser" args="load depthimage_to_laserscan/DepthImageToLaserScanNodelet camera_manager --no-bond">
+    <remap from="camera_info" to="/exploration/depth/camera_info" />
+    <remap from="image" to="/exploration/depth/image_rect_raw" />
+    <param name="output_frame_id" value="map" />
   </node>
 
   <node pkg="stl_exploration" type="image_maxing.py" name="image_maxing" output="screen" />

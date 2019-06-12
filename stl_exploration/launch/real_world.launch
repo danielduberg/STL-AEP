@@ -1,0 +1,82 @@
+<?xml version="1.0" ?>
+<launch>
+    <arg name="path" default="real_world/aep" />
+
+    <arg name="param_file" default="$(find stl_exploration)/config/$(arg path).yaml" />
+  
+    <node pkg="tf2_ros" type="static_transform_publisher" name="camera_tf_broadcaster" args="0.0 0 0.15 0 0 0 base_link camera_link" />
+  
+    <group ns="exploration">
+        <arg name="manager"             default="exploration_manager"/>
+        <node pkg="nodelet" type="nodelet" name="exploration_manager"  args="manager">
+            <!-- Have to remap the Octomap server topic here because they did something -->
+            <!-- Read more here: https://github.com/OctoMap/octomap_mapping/issues/39 -->
+            <remap from="cloud_in" to="/exploration/depth/color/points" />
+        </node>
+        
+        <!-- Octomap server -->
+        <node pkg="nodelet" type="nodelet" name="octomap_server" args="load octomap_server/OctomapServerNodelet $(arg manager)">
+            <param name="resolution" value="0.1" />
+            <param name="publish_free_space" value="true" />
+            <!-- fixed map frame (set to 'map' if SLAM or localization running!) -->
+            <param name="frame_id" type="string" value="map" />
+            <!-- maximum range to integrate (speedup!) -->
+            <param name="sensor_model/max_range" value="7.0" />
+        </node>
+        
+        <!-- Realsense camera -->
+        <!-- <include file="$(find stl_exploration)/launch/realsense.launch">
+            <arg name="manager"           value="$(arg manager)"/>
+            <arg name="serial_no"         value=""/>
+            <arg name="json_file_path"    value=""/>
+            <arg name="depth_width"       value="424"/>
+            <arg name="depth_height"      value="240"/>
+            <arg name="depth_fps"         value="6"/>
+            <arg name="color_width"       value="424"/>
+            <arg name="color_height"      value="240"/>
+            <arg name="color_fps"         value="6"/>
+            <arg name="enable_depth"      value="true"/>
+            <arg name="enable_color"      value="true"/>
+            <arg name="enable_infra1"     value="false"/>
+            <arg name="enable_infra2"     value="false"/>
+            <arg name="enable_fisheye"    value="false"/>
+            <arg name="enable_gyro"       value="true"/>
+            <arg name="enable_accel"      value="true"/>
+            <arg name="enable_pointcloud" value="true"/>
+            <arg name="enable_sync"       value="true"/>
+            <arg name="tf_prefix"         value="camera"/>
+            <arg name="pointcloud_texture_stream" default="RS2_STREAM_ANY"/>
+            <arg name="linear_accel_cov" value="0.1"/>
+            <arg name="unite_imu_method" value="linear_interpolation"/>
+        </include> -->
+        
+        <!-- STL-AEP -->
+        <include file="$(find stl_aeplanner)/launch/stl_aeplanner_nodelet.launch"/>
+        <!--
+        <node pkg="nodelet" type="nodelet" name="stl_aep" args="load stl_aeplanner/STLAEPlannerNodelet $(arg manager)" output="screen">
+            <remap from="octomap" to="octomap_full"/>
+            <remap from="agent_pose" to="/mavros/local_position/pose"/>
+        </node>
+        -->
+        
+        <!-- Frontier planner -->
+        <include file="$(find stl_frontier_planner)/launch/stl_frontier_planner.launch">
+          <arg name="path" value="$(arg path)" />
+          <arg name="param_file" value="$(arg param_file)" />
+        </include>
+
+        <!-- Exploration -->
+        <include file="$(find stl_exploration)/launch/fly_to.launch"/>
+        <node name="stl_exploration" pkg="stl_exploration" type="stl_exploration" output="screen" />
+        <rosparam command="load" file="$(arg param_file)" />
+    </group>
+  
+  <!--
+  <node pkg="stl_evaluation" type="stl_evaluation_node" name="std_evaluation_node" output="screen" required="true">
+    <rosparam command="load" file="$(arg param_file)" />
+  </node>
+  -->
+    
+  
+  <!-- <node pkg="rosbag" type="record" name="rosbag_record" args="record -o /home/rpl/catkin_ws/src/stl_aep/stl_exploration/rosbags/$(arg path) -a -x '(.*)compressed(.*)|(.*)theora(.*)'"/> -->
+</launch>

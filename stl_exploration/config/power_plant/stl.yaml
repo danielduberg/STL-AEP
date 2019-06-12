@@ -1,5 +1,5 @@
 name: "power_plant/stl"
-volume_complete: 0.73
+volume_complete: 1.0
 time_limit: 1800
 
 camera/horizontal_fov: 115.0
@@ -34,19 +34,15 @@ world_frame: "map"
 
 # bounding box: necessary to limit the simulation 
 # scenario (smaller than actual gazebo scenario)
-boundary/min: [ -1.0,  -24.0, 0.0]
-boundary/max: [ 30.0,   7.0,  30.0]
+boundary/min: [ -1.0,  -24.0, -4.0]
+boundary/max: [ 30.0,   7.0,  26.0]
 
-lambda: 0.25
-min_distance: 2
-max_distance: 5.0
+lambda: 5.0
+min_distance: 3
+max_distance: 7.0
 min_distance_active: true
 max_distance_active: true
 routers_active: false
 distance_add_path: 0.1
 max_search_distance: 40.0
 step_size: 0.1
-min_altitude: 1.0
-max_altitude: 4.0
-min_altitude_active: true
-max_altitude_active: true

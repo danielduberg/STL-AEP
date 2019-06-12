@@ -15,6 +15,7 @@
   <author email="fdsb@kth.se">Fernando S. Barbosa</author>
 
   <buildtool_depend>catkin</buildtool_depend>
+  <depend>dd_gazebo_plugins</depend>
   <depend>geometry_msgs</depend>
   <depend>octomap</depend>
   <depend>octomap_msgs</depend>

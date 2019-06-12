@@ -77,24 +77,32 @@ int main(int argc, char** argv)
   initial_positions.emplace_back(init_pose->pose.position.x, init_pose->pose.position.y,
                                  0.0, init_yaw);
   initial_positions.emplace_back(init_pose->pose.position.x, init_pose->pose.position.y,
-                                 0.5, init_yaw);
+                                 1.0, init_yaw);
   double move_forward_distance = 0.0;
   double yaw_radians = M_PI;
   initial_positions.emplace_back(
       init_pose->pose.position.x + move_forward_distance * std::cos(init_yaw),
-      init_pose->pose.position.y + move_forward_distance * std::sin(init_yaw), 0.5,
-      init_yaw + (yaw_radians / 2));
+      init_pose->pose.position.y + move_forward_distance * std::sin(init_yaw), 1.0,
+      init_yaw + (yaw_radians / 3));
   initial_positions.emplace_back(
       init_pose->pose.position.x + move_forward_distance * std::cos(init_yaw),
-      init_pose->pose.position.y + move_forward_distance * std::sin(init_yaw), 0.5,
+      init_pose->pose.position.y + move_forward_distance * std::sin(init_yaw), 1.0,
+      init_yaw + (2 * yaw_radians / 3));
+  initial_positions.emplace_back(
+      init_pose->pose.position.x + move_forward_distance * std::cos(init_yaw),
+      init_pose->pose.position.y + move_forward_distance * std::sin(init_yaw), 1.0,
       init_yaw + yaw_radians);
   initial_positions.emplace_back(
       init_pose->pose.position.x + move_forward_distance * std::cos(init_yaw),
-      init_pose->pose.position.y + move_forward_distance * std::sin(init_yaw), 0.5,
-      init_yaw - (yaw_radians / 2));
+      init_pose->pose.position.y + move_forward_distance * std::sin(init_yaw), 1.0,
+      init_yaw - (2 * yaw_radians / 3));
   initial_positions.emplace_back(
       init_pose->pose.position.x + move_forward_distance * std::cos(init_yaw),
-      init_pose->pose.position.y + move_forward_distance * std::sin(init_yaw), 0.5,
+      init_pose->pose.position.y + move_forward_distance * std::sin(init_yaw), 1.0,
+      init_yaw - (yaw_radians / 3));
+  initial_positions.emplace_back(
+      init_pose->pose.position.x + move_forward_distance * std::cos(init_yaw),
+      init_pose->pose.position.y + move_forward_distance * std::sin(init_yaw), 1.0,
       init_yaw);
 
   // This is the initialization motion, necessary that the known free space
@@ -103,25 +111,23 @@ int main(int argc, char** argv)
   geometry_msgs::PoseStamped last_pose;
   last_pose.header.frame_id = "map";
 
-  ros::ServiceClient arm_client = nh.serviceClient<mavros_msgs::CommandBool>("/mavros/"
-                                                                             "cmd/"
-                                                                             "arming");
-  ros::ServiceClient set_mode_client = nh.serviceClient<mavros_msgs::SetMode>("/mavros/"
-                                                                              "set_mode");
-  mavros_msgs::CommandBool arm_srv;
-  arm_srv.request.value = true;
+  // ros::ServiceClient arm_client = nh.serviceClient<mavros_msgs::CommandBool>("/mavros/"
+  //                                                                            "cmd/"
+  //                                                                            "arming");
+  // ros::ServiceClient set_mode_client = nh.serviceClient<mavros_msgs::SetMode>("/mavros/"
+  //                                                                             "set_mode");
+  // mavros_msgs::CommandBool arm_srv;
+  // arm_srv.request.value = true;
 
-  mavros_msgs::SetMode set_mode_srv;
-  set_mode_srv.request.base_mode = 0;
-  set_mode_srv.request.custom_mode = "offboard";
+  // mavros_msgs::SetMode set_mode_srv;
+  // set_mode_srv.request.base_mode = 0;
+  // set_mode_srv.request.custom_mode = "offboard";
 
-  ros::Publisher setpoint_pub =
-      nh.advertise<geometry_msgs::PoseStamped>("/mavros/setpoint_position/local", 10);
-  setpoint_pub.publish(geometry_msgs::PoseStamped());
-  setpoint_pub.publish(geometry_msgs::PoseStamped());
-  setpoint_pub.publish(geometry_msgs::PoseStamped());
-  arm_client.call(arm_srv);
-  set_mode_client.call(set_mode_srv);
+  // pub.publish(geometry_msgs::PoseStamped());
+  // pub.publish(geometry_msgs::PoseStamped());
+  // pub.publish(geometry_msgs::PoseStamped());
+  // arm_client.call(arm_srv);
+  // set_mode_client.call(set_mode_srv);
 
   for (int i = 0; i < initial_positions.size(); ++i)
   {
@@ -131,7 +137,7 @@ int main(int argc, char** argv)
     goal.pose.pose.position.z = initial_positions[i][2];
     goal.pose.pose.orientation = tf::createQuaternionMsgFromYaw(initial_positions[i][3]);
     goal.distance_converged = 0.3;
-    goal.yaw_converged = 0.1 * M_PI;
+    goal.yaw_converged = 0.05 * M_PI;
     last_pose.pose = goal.pose.pose;
 
     ROS_INFO("Sending initial goal %d out of %d...", (i + 1),
@@ -177,8 +183,8 @@ int main(int argc, char** argv)
       last_pose.pose = goal_pose.pose;
       stl_aeplanner_msgs::FlyToGoal goal;
       goal.pose = goal_pose;
-      goal.distance_converged = 0.8;
-      goal.yaw_converged = 0.8 * M_PI;
+      goal.distance_converged = 0.2;
+      goal.yaw_converged = 0.1 * M_PI;
       ac.sendGoal(goal);
 
       ac.waitForResult(ros::Duration(0));
@@ -221,8 +227,8 @@ int main(int argc, char** argv)
         last_pose.pose = goal_pose;
         stl_aeplanner_msgs::FlyToGoal goal;
         goal.pose.pose = goal_pose;
-        goal.distance_converged = 0.8;
-        goal.yaw_converged = 0.8 * M_PI;
+        goal.distance_converged = 0.2;
+        goal.yaw_converged = 0.1 * M_PI;
         ac.sendGoal(goal);
 
         ac.waitForResult(ros::Duration(0));

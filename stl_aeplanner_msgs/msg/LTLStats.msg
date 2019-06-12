@@ -4,7 +4,3 @@ float64 mean_closest_distance
 float64 closest_router_distance
 float64 ltl_min_distance
 float64 ltl_max_distance
-float64 current_closest_altitude
-float64 mean_closest_altitude
-float64 ltl_min_altitude
-float64 ltl_max_altitude

@@ -78,17 +78,18 @@ void STLAEPlanner::execute(const stl_aeplanner_msgs::aeplannerGoalConstPtr& goal
   ROS_WARN("Init");
   root_ = initialize(&rtree, current_state);
   ROS_WARN("expandRRT");
+  ROS_WARN_STREAM(root_->gain_ << " " << root_->children_.size());
+
   expandRRT(ot, &rtree, stl_rtree, current_state);
 
   ROS_WARN("getCopyOfParent");
   best_branch_root_ = best_node_->getCopyOfParentBranch();
 
   ROS_WARN("createRRTMarker");
-  rrt_marker_pub_.publish(
-      createRRTMarkerArray(root_, stl_rtree, current_state, ltl_lambda_, ltl_min_distance_, ltl_max_distance_,
-                           ltl_min_distance_active_, ltl_max_distance_active_, ltl_max_search_distance_,
-                           params_.bounding_radius, ltl_step_size_, ltl_routers_, ltl_routers_active_, params_.lambda,
-                           ltl_min_altitude_active_, ltl_max_altitude_active_, ltl_min_altitude_, ltl_max_altitude_));
+  rrt_marker_pub_.publish(createRRTMarkerArray(root_, stl_rtree, current_state, ltl_lambda_, ltl_min_distance_,
+                                               ltl_max_distance_, ltl_min_distance_active_, ltl_max_distance_active_,
+                                               ltl_max_search_distance_, params_.bounding_radius, ltl_step_size_,
+                                               ltl_routers_, ltl_routers_active_, params_.lambda));
   ROS_WARN("publishRecursive");
   publishEvaluatedNodesRecursive(root_);
 
@@ -96,12 +97,10 @@ void STLAEPlanner::execute(const stl_aeplanner_msgs::aeplannerGoalConstPtr& goal
   result.pose.pose = vecToPose(best_branch_root_->children_[0]->state_);
   if (best_node_->score(stl_rtree, ltl_lambda_, ltl_min_distance_, ltl_max_distance_, ltl_min_distance_active_,
                         ltl_max_distance_active_, ltl_max_search_distance_, params_.bounding_radius, ltl_step_size_,
-                        ltl_routers_, ltl_routers_active_, params_.lambda, ltl_min_altitude_, ltl_max_altitude_,
-                        ltl_min_altitude_active_, ltl_max_altitude_active_) > params_.zero_gain)
+                        ltl_routers_, ltl_routers_active_, params_.lambda) > params_.zero_gain)
     result.is_clear = true;
   else
   {
-    ROS_WARN("Getting frontiers");
     result.frontiers = getFrontiers();
     result.is_clear = false;
     best_branch_root_ = NULL;
@@ -168,7 +167,7 @@ void STLAEPlanner::initializeKDTreeWithPreviousBestBranch(value_rtree* rtree, st
 
 void STLAEPlanner::reevaluatePotentialInformationGainRecursive(std::shared_ptr<RRTNode> node)
 {
-  std::pair<double, double> ret = gainCubature(node->state_);
+  std::pair<double, double> ret = gainCubature(node);
   node->state_[3] = ret.second;  // Assign yaw angle that maximizes g
   node->gain_ = ret.first;
   for (typename std::vector<std::shared_ptr<RRTNode>>::iterator node_it = node->children_.begin();
@@ -185,8 +184,7 @@ void STLAEPlanner::expandRRT(std::shared_ptr<octomap::OcTree> ot, value_rtree* r
         (n < params_.cutoff_iterations and
          best_node_->score(stl_rtree, ltl_lambda_, ltl_min_distance_, ltl_max_distance_, ltl_min_distance_active_,
                            ltl_max_distance_active_, ltl_max_search_distance_, params_.bounding_radius, ltl_step_size_,
-                           ltl_routers_, ltl_routers_active_, params_.lambda, ltl_min_altitude_, ltl_max_altitude_,
-                           ltl_min_altitude_active_, ltl_max_altitude_active_) < params_.zero_gain)) and
+                           ltl_routers_, ltl_routers_active_, params_.lambda) < params_.zero_gain)) and
        ros::ok();
        ++n)
   {
@@ -206,20 +204,19 @@ void STLAEPlanner::expandRRT(std::shared_ptr<octomap::OcTree> ot, value_rtree* r
       new_node->state_ = current_state + offset;
       nearest = chooseParent(*rtree, stl_rtree, new_node, params_.extension_range);
       new_node->state_ = restrictDistance(nearest->state_, new_node->state_);
+
       ot_result = ot->search(octomap::point3d(new_node->state_[0], new_node->state_[1], new_node->state_[2]));
       if (ot_result == NULL)
         continue;
-      
+
     } while (!isInsideBoundaries(new_node->state_) or !ot_result or
              collisionLine(stl_rtree, nearest->state_, new_node->state_, params_.bounding_radius));
 
     // new_node is now ready to be added to tree
     new_node->parent_ = nearest;
     nearest->children_.push_back(new_node);
-
     // rewire tree with new node
     rewire(*rtree, stl_rtree, new_node, params_.extension_range, params_.bounding_radius, params_.d_overshoot_);
-
     // Calculate potential information gain for new_node
     std::pair<double, double> ret = getGain(new_node);
     new_node->state_[3] = ret.second;  // Assign yaw angle that maximizes g
@@ -230,13 +227,13 @@ void STLAEPlanner::expandRRT(std::shared_ptr<octomap::OcTree> ot, value_rtree* r
     if (!best_node_ or
         new_node->score(stl_rtree, ltl_lambda_, ltl_min_distance_, ltl_max_distance_, ltl_min_distance_active_,
                         ltl_max_distance_active_, ltl_max_search_distance_, params_.bounding_radius, ltl_step_size_,
-                        ltl_routers_, ltl_routers_active_, params_.lambda, ltl_min_altitude_, ltl_max_altitude_,
-                        ltl_min_altitude_active_, ltl_max_altitude_active_) >
+                        ltl_routers_, ltl_routers_active_, params_.lambda) >
             best_node_->score(stl_rtree, ltl_lambda_, ltl_min_distance_, ltl_max_distance_, ltl_min_distance_active_,
                               ltl_max_distance_active_, ltl_max_search_distance_, params_.bounding_radius,
-                              ltl_step_size_, ltl_routers_, ltl_routers_active_, params_.lambda, ltl_min_altitude_,
-                              ltl_max_altitude_, ltl_min_altitude_active_, ltl_max_altitude_active_))
+                              ltl_step_size_, ltl_routers_, ltl_routers_active_, params_.lambda))
+    {
       best_node_ = new_node;
+    }
   }
 }
 
@@ -279,10 +276,10 @@ std::shared_ptr<RRTNode> STLAEPlanner::chooseParent(const value_rtree& rtree, st
   {
     std::shared_ptr<RRTNode> current_node = item.second;
 
-    double current_cost = current_node->cost(
-        stl_rtree, ltl_lambda_, ltl_min_distance_, ltl_max_distance_, ltl_min_distance_active_,
-        ltl_max_distance_active_, ltl_max_search_distance_, params_.bounding_radius, ltl_step_size_, ltl_routers_,
-        ltl_routers_active_, ltl_min_altitude_, ltl_max_altitude_, ltl_min_altitude_active_, ltl_max_altitude_active_);
+    double current_cost =
+        current_node->cost(stl_rtree, ltl_lambda_, ltl_min_distance_, ltl_max_distance_, ltl_min_distance_active_,
+                           ltl_max_distance_active_, ltl_max_search_distance_, params_.bounding_radius, ltl_step_size_,
+                           ltl_routers_, ltl_routers_active_);
 
     if (!best_node || current_cost < best_cost)
     {
@@ -305,26 +302,24 @@ void STLAEPlanner::rewire(const value_rtree& rtree, std::shared_ptr<point_rtree>
 
   Eigen::Vector3d p1(new_node->state_[0], new_node->state_[1], new_node->state_[2]);
 
-  double new_cost = new_node->cost(
-      stl_rtree, ltl_lambda_, ltl_min_distance_, ltl_max_distance_, ltl_min_distance_active_, ltl_max_distance_active_,
-      ltl_max_search_distance_, params_.bounding_radius, ltl_step_size_, ltl_routers_, ltl_routers_active_,
-      ltl_min_altitude_, ltl_max_altitude_, ltl_min_altitude_active_, ltl_max_altitude_active_);
+  double new_cost = new_node->cost(stl_rtree, ltl_lambda_, ltl_min_distance_, ltl_max_distance_,
+                                   ltl_min_distance_active_, ltl_max_distance_active_, ltl_max_search_distance_,
+                                   params_.bounding_radius, ltl_step_size_, ltl_routers_, ltl_routers_active_);
 
   for (size_t i = 0; i < nearest.size(); ++i)
   {
     std::shared_ptr<RRTNode> current_node = nearest[i].second;
-    
+
     if (current_node == root_ || current_node == new_node)
     {
       continue;
     }
-    
+
     Eigen::Vector3d p2(current_node->state_[0], current_node->state_[1], current_node->state_[2]);
 
     if (current_node->cost(stl_rtree, ltl_lambda_, ltl_min_distance_, ltl_max_distance_, ltl_min_distance_active_,
                            ltl_max_distance_active_, ltl_max_search_distance_, params_.bounding_radius, ltl_step_size_,
-                           ltl_routers_, ltl_routers_active_, ltl_min_altitude_, ltl_max_altitude_,
-                           ltl_min_altitude_active_, ltl_max_altitude_active_) > new_cost + (p1 - p2).norm())
+                           ltl_routers_, ltl_routers_active_) > new_cost + (p1 - p2).norm())
     {
       if (!collisionLine(stl_rtree, new_node->state_, current_node->state_, r))
       {
@@ -370,26 +365,249 @@ std::pair<double, double> STLAEPlanner::getGain(std::shared_ptr<RRTNode> node)
   }
 
   node->gain_explicitly_calculated_ = true;
-  return gainCubature(node->state_);
+  return gainCubature(node);
 }
 
 bool STLAEPlanner::reevaluate(stl_aeplanner_msgs::Reevaluate::Request& req,
                               stl_aeplanner_msgs::Reevaluate::Response& res)
 {
-  for (std::vector<geometry_msgs::Point>::iterator it = req.point.begin(); it != req.point.end(); ++it)
-  {
-    Eigen::Vector4d pos(it->x, it->y, it->z, 0);
-    std::pair<double, double> gain_response = gainCubature(pos);
-    res.gain.push_back(gain_response.first);
-    res.yaw.push_back(gain_response.second);
-  }
+  // ROS_DEBUG_STREAM("Reevaluate start!");
+  // for (std::vector<geometry_msgs::Point>::iterator it = req.point.begin(); it != req.point.end(); ++it)
+  // {
+  //   Eigen::Vector4d pos(it->x, it->y, it->z, 0);
+  //   std::pair<double, double> gain_response = gainCubature(pos);
+  //   res.gain.push_back(gain_response.first);
+  //   res.yaw.push_back(gain_response.second);
+  // }
+  // ROS_DEBUG_STREAM("Reevaluate done!");
 
   return true;
 }
 
-std::pair<double, double> STLAEPlanner::gainCubature(Eigen::Vector4d state)
+std::vector<octomap::point3d> getChildren(octomap::point3d current, octomap::point3d origin, double resolution)
 {
+  octomap::point3d transformed = current - origin;
+
+  // Source:
+  // https://stackoverflow.com/questions/29557459/round-to-nearest-multiple-of-a-number
+  // transformed.x() = int(((transformed.x() + resolution / 2.0) / resolution)) *
+  // resolution; transformed.y() = int(((transformed.y() + resolution / 2.0) /
+  // resolution)) * resolution; transformed.z() = int(((transformed.z() + resolution
+  // / 2.0) / resolution)) * resolution;
+
+  std::vector<octomap::point3d> children;
+
+  std::vector<double> x_values;
+  if (transformed.x() == 0)
+  {
+    x_values.push_back(current.x() - resolution);
+    x_values.push_back(current.x());
+    x_values.push_back(current.x() + resolution);
+  }
+  else if (transformed.y() == 0 && transformed.z() == 0)
+  {
+    double sign = (transformed.x() > 0) ? 1 : -1;
+
+    x_values.push_back(current.x() + (sign * resolution));
+  }
+  else
+  {
+    double sign = (transformed.x() > 0) ? 1 : -1;
+
+    x_values.push_back(current.x() + (sign * resolution));
+    x_values.push_back(current.x());
+  }
+
+  std::vector<double> y_values;
+  if (transformed.y() == 0)
+  {
+    y_values.push_back(current.y() - resolution);
+    y_values.push_back(current.y());
+    y_values.push_back(current.y() + resolution);
+  }
+  else if (transformed.y() == 0 && transformed.z() == 0)
+  {
+    double sign = (transformed.y() > 0) ? 1 : -1;
+
+    y_values.push_back(current.y() + (sign * resolution));
+  }
+  else
+  {
+    double sign = (transformed.y() > 0) ? 1 : -1;
+
+    y_values.push_back(current.y() + (sign * resolution));
+    y_values.push_back(current.y());
+  }
+
+  std::vector<double> z_values;
+  if (transformed.z() == 0)
+  {
+    z_values.push_back(current.z() - resolution);
+    z_values.push_back(current.z());
+    z_values.push_back(current.z() + resolution);
+  }
+  else if (transformed.x() == 0 && transformed.y() == 0)
+  {
+    double sign = (transformed.z() > 0) ? 1 : -1;
+
+    z_values.push_back(current.z() + (sign * resolution));
+  }
+  else
+  {
+    double sign = (transformed.z() > 0) ? 1 : -1;
+
+    z_values.push_back(current.z() + (sign * resolution));
+    z_values.push_back(current.z());
+  }
+
+  for (double x : x_values)
+  {
+    for (double y : y_values)
+    {
+      for (double z : z_values)
+      {
+        if (x == 0 && y == 0 && z == 0)
+        {
+          // TODO: Maybe some rounding errors?!
+          continue;
+        }
+
+        children.emplace_back(current.x() + x, current.y() + y, current.z() + z);
+      }
+    }
+  }
+
+  return children;
+}
+
+std::pair<double, double> STLAEPlanner::gainCubature(std::shared_ptr<RRTNode> node)
+{
+  if (!node->parent_)
+  {
+    return std::make_pair(0.0, node->state_[3]);
+  }
+
   std::shared_ptr<octomap::OcTree> ot = ot_;
+
+  // octomap::point3d origin(state[0], state[1], state[2]);
+
+  // std::queue<octomap::point3d> open_set;
+  // open_set.emplace(int(((origin.x() + ot->getResolution() / 2.0) /
+  // ot->getResolution())) *
+  //                      ot->getResolution(),
+  //                  int(((origin.y() + ot->getResolution() / 2.0) /
+  //                  ot->getResolution())) *
+  //                      ot->getResolution(),
+  //                  int(((origin.z() + ot->getResolution() / 2.0) /
+  //                  ot->getResolution())) *
+  //                      ot->getResolution());
+
+  // std::set<std::tuple<double, double, double>> closed_set;
+  // std::set<std::tuple<double, double, double>> unexplored_set;
+
+  // std::vector<int> gain_per_yaw(360, 0);
+
+  // double half_vfov = params_.vfov / 2.0;
+
+  // octomap::point3d current;
+  // while (!open_set.empty())
+  // {
+  //   current = open_set.front();
+  //   open_set.pop();
+  //   if (!closed_set.emplace(current.x(), current.y(), current.z()).second)
+  //   {
+  //     // Have already processed this
+  //     continue;
+  //   }
+
+  //   octomap::OcTreeNode* result = ot->search(current);
+  //   if (result)
+  //   {
+  //     if (result->getLogOdds() > 0)
+  //     {
+  //       // Already seen as Occupied space
+  //       continue;
+  //     }
+  //   }
+  //   else
+  //   {
+  //     if (!unexplored_set.emplace(current.x(), current.y(), current.z()).second)
+  //     {
+  //       // Already processed this
+  //       continue;
+  //     }
+  //     else
+  //     {
+  //       // Is this correct?
+  //       int yaw =
+  //           std::round(std::atan2(origin.y() - current.y(), origin.x() - current.x()) *
+  //                      180.0 / M_PI);
+  //       if (yaw < 0)
+  //       {
+  //         yaw += 360;
+  //       }
+
+  //       gain_per_yaw[yaw]++;
+  //     }
+  //   }
+
+  //   // Get children
+  //   std::vector<octomap::point3d> children =
+  //       getChildren(current, origin, ot->getResolution());
+
+  //   for (octomap::point3d child : children)
+  //   {
+  //     // Check if inside boundaries
+  //     if (!isInsideBoundaries(child))
+  //     {
+  //       // Outside boundaries
+  //       continue;
+  //     }
+
+  //     double distance = (child - origin).norm();
+
+  //     // Check if in sensor fov
+  //     double vertical_angle =
+  //         std::fabs(std::asin((child - origin).z() / distance)) * 180.0 / M_PI;
+  //     if (vertical_angle > half_vfov || distance > params_.r_max)
+  //     {
+  //       // Outside sensor fov or range
+  //       continue;
+  //     }
+
+  //     open_set.push(child);
+  //   }
+  // }
+
+  // // double gain = pow(ot->getResolution(), 3.0) * free_set.size();
+
+  // int half_hfov = params_.hfov / 2;
+
+  // int best_yaw = 0;
+  // int best_yaw_score =
+  //     std::accumulate(gain_per_yaw.begin(), gain_per_yaw.begin() + half_hfov, 0) +
+  //     std::accumulate(gain_per_yaw.rbegin(), gain_per_yaw.rend() - half_hfov,
+  //                     0);  // FIXME: Should the second one be -?
+  // int previous_yaw_score = best_yaw_score;
+
+  // for (int yaw = 1; yaw < 360; ++yaw)
+  // {
+  //   int current_yaw_score =
+  //       previous_yaw_score -
+  //       gain_per_yaw[(yaw - 1 - half_hfov + gain_per_yaw.size()) % gain_per_yaw.size()]
+  //       + gain_per_yaw[(yaw + half_hfov) % gain_per_yaw.size()];
+
+  //   previous_yaw_score = current_yaw_score;
+  //   if (current_yaw_score > best_yaw_score)
+  //   {
+  //     best_yaw_score = current_yaw_score;
+  //     best_yaw = yaw;
+  //   }
+  // }
+
+  // double gain = pow(ot->getResolution(), 3.0) * best_yaw_score;
+
+  // return std::make_pair(gain, best_yaw * M_PI / 180.0);
 
   double gain = 0.0;
 
@@ -404,12 +622,20 @@ std::pair<double, double> STLAEPlanner::gainCubature(Eigen::Vector4d state)
 
   std::map<int, double> gain_per_yaw;
 
-  Eigen::Vector3d origin(state[0], state[1], state[2]);
+  Eigen::Vector3d origin(node->state_[0], node->state_[1], node->state_[2]);
   Eigen::Vector3d vec, dir;
 
-  for (theta = -180; theta < 180; theta += dtheta)
+  Eigen::Vector2d parent_position(node->parent_->state_[0], node->parent_->state_[1]);
+  Eigen::Vector2d node_position(node->state_[0], node->state_[1]);
+
+  Eigen::Vector2d direction = node_position - parent_position;
+
+  double yaw = 180.0 * std::atan2(direction[1], direction[0]) / M_PI;
+
+  for (theta = yaw - fov_y; theta <= yaw + fov_y; theta += dtheta)
   {
-    theta_rad = M_PI * theta / 180.0f;
+    theta_rad = M_PI * theta / 180.0;
+
     for (phi = 90 - fov_p / 2; phi < 90 + fov_p / 2; phi += dphi)
     {
       phi_rad = M_PI * phi / 180.0f;
@@ -417,10 +643,9 @@ std::pair<double, double> STLAEPlanner::gainCubature(Eigen::Vector4d state)
       double g = 0;
       for (r = params_.r_min; r < params_.r_max; r += dr)
       {
-        vec[0] = state[0] + r * cos(theta_rad) * sin(phi_rad);
-        vec[1] = state[1] + r * sin(theta_rad) * sin(phi_rad);
-        vec[2] = state[2] + r * cos(phi_rad);
-        dir = vec - origin;
+        vec[0] = node->state_[0] + r * cos(theta_rad) * sin(phi_rad);
+        vec[1] = node->state_[1] + r * sin(theta_rad) * sin(phi_rad);
+        vec[2] = node->state_[2] + r * cos(phi_rad);
 
         octomap::point3d query(vec[0], vec[1], vec[2]);
         octomap::OcTreeNode* result = ot->search(query);
@@ -439,42 +664,77 @@ std::pair<double, double> STLAEPlanner::gainCubature(Eigen::Vector4d state)
       }
 
       gain += g;
-      gain_per_yaw[theta] += g;
     }
   }
 
-  int best_yaw = 0;
-  double best_yaw_score = 0;
-  for (int yaw = -180; yaw < 180; yaw++)
-  {
-    double yaw_score = 0;
-    for (int fov = -fov_y / 2; fov < fov_y / 2; fov++)
-    {
-      int theta = yaw + fov;
-      if (theta < -180)
-        theta += 360;
-      if (theta > 180)
-        theta -= 360;
-      yaw_score += gain_per_yaw[theta];
-    }
+  // for (theta = -180; theta < 180; theta += dtheta)
+  // {
+  //   theta_rad = M_PI * theta / 180.0f;
+  //   for (phi = 90 - fov_p / 2; phi < 90 + fov_p / 2; phi += dphi)
+  //   {
+  //     phi_rad = M_PI * phi / 180.0f;
 
-    if (best_yaw_score < yaw_score)
-    {
-      best_yaw_score = yaw_score;
-      best_yaw = yaw;
-    }
-  }
+  //     double g = 0;
+  //     for (r = params_.r_min; r < params_.r_max; r += dr)
+  //     {
+  //       vec[0] = state[0] + r * cos(theta_rad) * sin(phi_rad);
+  //       vec[1] = state[1] + r * sin(theta_rad) * sin(phi_rad);
+  //       vec[2] = state[2] + r * cos(phi_rad);
+  //       dir = vec - origin;
 
-  double r_max = params_.r_max;
-  double h_max = params_.hfov / M_PI * 180;
-  double v_max = params_.vfov / M_PI * 180;
+  //       octomap::point3d query(vec[0], vec[1], vec[2]);
+  //       octomap::OcTreeNode* result = ot->search(query);
 
-  gain = best_yaw_score;  // / ((r_max*r_max*r_max/3) * h_max * (1-cos(v_max))) ;
-  // ROS_ERROR_STREAM(gain);
+  //       Eigen::Vector4d v(vec[0], vec[1], vec[2], 0);
+  //       if (!isInsideBoundaries(v))
+  //         break;
+  //       if (result)
+  //       {
+  //         // Break if occupied so we don't count any information gain behind a wall.
+  //         if (result->getLogOdds() > 0)
+  //           break;
+  //       }
+  //       else
+  //         g += (2 * r * r * dr + 1 / 6 * dr * dr * dr) * dtheta_rad * sin(phi_rad) * sin(dphi_rad / 2);
+  //     }
 
-  double yaw = M_PI * best_yaw / 180.f;
+  //     gain += g;
+  //     gain_per_yaw[theta] += g;
+  //   }
+  // }
 
-  state[3] = yaw;
+  // int best_yaw = 0;
+  // double best_yaw_score = 0;
+  // for (int yaw = -180; yaw < 180; yaw++)
+  // {
+  //   double yaw_score = 0;
+  //   for (int fov = -fov_y / 2; fov < fov_y / 2; fov++)
+  //   {
+  //     int theta = yaw + fov;
+  //     if (theta < -180)
+  //       theta += 360;
+  //     if (theta > 180)
+  //       theta -= 360;
+  //     yaw_score += gain_per_yaw[theta];
+  //   }
+
+  //   if (best_yaw_score < yaw_score)
+  //   {
+  //     best_yaw_score = yaw_score;
+  //     best_yaw = yaw;
+  //   }
+  // }
+
+  // double r_max = params_.r_max;
+  // double h_max = params_.hfov / M_PI * 180;
+  // double v_max = params_.vfov / M_PI * 180;
+
+  // gain = best_yaw_score;  // / ((r_max*r_max*r_max/3) * h_max * (1-cos(v_max))) ;
+  // // ROS_ERROR_STREAM(gain);
+
+  yaw = M_PI * yaw / 180.0;
+
+  node->state_[3] = yaw;
   return std::make_pair(gain, yaw);
 }
 
@@ -570,6 +830,7 @@ void STLAEPlanner::publishEvaluatedNodesRecursive(std::shared_ptr<RRTNode> node)
     {
       stl_aeplanner_msgs::Node pig_node;
       pig_node.gain = (*node_it)->gain_;
+      // ROS_ERROR_STREAM("GAIN: " << pig_node.gain);
       pig_node.pose.pose.position.x = (*node_it)->state_[0];
       pig_node.pose.pose.position.y = (*node_it)->state_[1];
       pig_node.pose.pose.position.z = (*node_it)->state_[2];
@@ -625,8 +886,6 @@ void STLAEPlanner::agentPoseCallback(const geometry_msgs::PoseStamped& msg)
     ltl_stats.header.stamp = ros::Time::now();
     ltl_stats.ltl_min_distance = (ltl_min_distance_active_) ? ltl_min_distance_ : -1;
     ltl_stats.ltl_max_distance = (ltl_max_distance_active_) ? ltl_max_distance_ : -1;
-    ltl_stats.ltl_min_altitude = (ltl_min_altitude_active_) ? ltl_min_altitude_ : -1;
-    ltl_stats.ltl_max_altitude = (ltl_max_altitude_active_) ? ltl_max_altitude_ : -1;
 
     Eigen::Vector3d position(current_state_[0], current_state_[1], current_state_[2]);
 
@@ -666,29 +925,6 @@ void STLAEPlanner::agentPoseCallback(const geometry_msgs::PoseStamped& msg)
     ltl_stats.closest_router_distance =
         (ltl_routers_active_) ? RRTNode::getMaxRouterDifference(position, position, ltl_routers_, ltl_step_size_) : -1;
 
-    // Altitude
-    std::pair<double, double> closest_altitude = RRTNode::getAltitudeClosestOccupiedBounded(
-        rtree, position, position, ltl_max_search_distance_, params_.bounding_radius, ltl_step_size_);
-
-    if (closest_altitude.first >= ltl_max_search_distance_)
-    {
-      return;
-    }
-
-    ltl_stats.current_closest_altitude = closest_altitude.first;
-
-    if (ltl_iterations_ == 1)
-    {
-      ltl_mean_closest_altitude_ = closest_altitude.first;
-    }
-    else
-    {
-      ltl_mean_closest_altitude_ += (closest_altitude.first - ltl_mean_closest_altitude_) / ltl_iterations_;
-    }
-
-    ltl_stats.mean_closest_altitude = ltl_mean_closest_altitude_;
-
-    // Publish
     ltl_stats_pub_.publish(ltl_stats);
   }
 }
@@ -795,6 +1031,58 @@ struct
   }
 } compareByDistance;
 
+// void STLAEPlanner::createLTLSearchDistance()
+// {
+//   if (!ot_)
+//   {
+//     return;
+//   }
+
+//   ltl_search_distances_.clear();
+
+//   double res = ot_->getResolution();
+
+//   for (double x = -ltl_max_search_distance_; x <= 0; x += res)
+//   {
+//     for (double y = -ltl_max_search_distance_; y <= 0; y += res)
+//     {
+//       double distance = std::hypot(x, y);
+
+//       if (distance <= ltl_max_search_distance_)
+//       {
+//         ltl_search_distances_.emplace_back(octomap::point3d(x, y, 0), distance);
+//         ltl_search_distances_.emplace_back(octomap::point3d(x, -y, 0), distance);
+//         ltl_search_distances_.emplace_back(octomap::point3d(-x, y, 0), distance);
+//         ltl_search_distances_.emplace_back(octomap::point3d(-x, -y, 0), distance);
+//       }
+//     }
+//   }
+
+//   std::sort(ltl_search_distances_.begin(), ltl_search_distances_.end(),
+//             compareByDistance);
+// }
+
+// double STLAEPlanner::getDistanceToClosestOccupiedBounded(std::shared_ptr<octomap::OcTree>
+// ot,
+//                                                       Eigen::Vector4d current_state)
+// {
+//   octomap::point3d state(current_state[0], current_state[1], current_state[2]);
+
+//   for (std::pair<octomap::point3d, double> point : ltl_search_distances_)
+//   {
+//     octomap::OcTreeNode* node = ot->search(state + point.first);
+//     if (node)
+//     {
+//       if (ot->isNodeOccupied(node))
+//       {
+//         return point.second;
+//       }
+//     }
+//   }
+
+//   return 10000000;
+// }
+
 void STLAEPlanner::configCallback(stl_aeplanner::STLConfig& config, uint32_t level)
 {
   ltl_lambda_ = config.lambda;
@@ -806,11 +1094,6 @@ void STLAEPlanner::configCallback(stl_aeplanner::STLConfig& config, uint32_t lev
   ltl_dist_add_path_ = config.distance_add_path;
   ltl_max_search_distance_ = config.max_search_distance;
   ltl_step_size_ = config.step_size;
-
-  ltl_min_altitude_ = config.min_altitude;
-  ltl_max_altitude_ = config.max_altitude;
-  ltl_min_altitude_active_ = config.min_altitude_active;
-  ltl_max_altitude_active_ = config.max_altitude_active;
 }
 
 void STLAEPlanner::routerCallback(const dd_gazebo_plugins::Router::ConstPtr& msg)

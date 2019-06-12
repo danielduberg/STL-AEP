@@ -34,10 +34,10 @@ world_frame: "map"
 
 # bounding box: necessary to limit the simulation 
 # scenario (smaller than actual gazebo scenario)
-boundary/min: [ -2  -2, 0.2]
-boundary/max: [ 32,   31.5,  2.5]
+boundary/min: [ -10.0,  -3.0, 0.2]
+boundary/max: [ 24.0,   30.5,  2.5]
 
-lambda: 0.25
+lambda: 5.0
 min_distance: 1.5
 max_distance: 4.0
 min_distance_active: true

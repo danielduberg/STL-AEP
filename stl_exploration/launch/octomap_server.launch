@@ -1,15 +1,20 @@
 <?xml version="1.0" ?>
 <launch>
 	<node pkg="octomap_server" type="octomap_server_node" name="octomap_server">
-  <param name="resolution" value="0.1" />
+        <param name="resolution" value="0.1" />
 		<param name="publish_free_space" value="true" />
 		
 		<!-- fixed map frame (set to 'map' if SLAM or localization running!) -->
 		<param name="frame_id" type="string" value="map" />
 		
 		<!-- maximum range to integrate (speedup!) -->
+		<!-- <param name="sensor_model/max_range" value="3.0" /> -->
 		<param name="sensor_model/max_range" value="7.0" />
 
-    <remap from="cloud_in" to="/virtual_camera/depth/points" />
+        <!-- <remap from="cloud_in" to="/camera/depth/color/points" /> -->
+		<remap from="cloud_in" to="/virtual_camera/depth/points" />
+
+		<param name="max_depth" value="14" />
+		<param name="compress_map" value="false" />
 	</node>
 </launch>

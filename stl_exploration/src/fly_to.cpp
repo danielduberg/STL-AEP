@@ -44,6 +44,58 @@ public:
     tf::Matrix3x3 m(gq);
     double roll, pitch, goal_yaw;
     m.getRPY(roll, pitch, goal_yaw);
+    
+    geometry_msgs::PoseStamped goal_to_pub;
+    goal_to_pub = goal->pose;
+    
+    listener.waitForTransform("/map", "/base_link", ros::Time(0), ros::Duration(10.0));
+    listener.lookupTransform("/map", "/base_link", ros::Time(0), transform);
+    goal_to_pub.pose.position.x = (float)transform.getOrigin().x();
+    goal_to_pub.pose.position.y = (float)transform.getOrigin().y();
+    goal_to_pub.pose.position.z = (float)transform.getOrigin().z();
+    
+    goal_to_pub.header.frame_id = "map";
+    
+    do 
+    {
+      r.sleep();
+
+      ROS_INFO_STREAM("Publishing goal to (" << p.x << ", " << p.y << ", " << p.z << ") ");
+      goal_to_pub.header.stamp = ros::Time::now();
+      pub_.publish(goal_to_pub);
+
+      listener.waitForTransform("/map", "/base_link", ros::Time(0), ros::Duration(10.0));
+      listener.lookupTransform("/map", "/base_link", ros::Time(0), transform);
+
+      geometry_msgs::Point q;
+      q.x = (float)transform.getOrigin().x();
+      q.y = (float)transform.getOrigin().y();
+      q.z = (float)transform.getOrigin().z();
+
+      geometry_msgs::Quaternion tq;
+      tq.x = (float)transform.getRotation().x();
+      tq.y = (float)transform.getRotation().y();
+      tq.z = (float)transform.getRotation().z();
+      tq.w = (float)transform.getRotation().w();
+      tf::Quaternion cq(tq.x, tq.y, tq.z, tq.w);
+      tf::Matrix3x3 m(cq);
+      double current_yaw;
+      m.getRPY(roll, pitch, current_yaw);
+
+      ROS_INFO_STREAM("Current position: (" << q.x << ", " << q.y << ", " << q.z << ") ");
+      geometry_msgs::Point d;
+      d.x = p.x - q.x;
+      d.y = p.y - q.y;
+      d.z = p.z - q.z;
+
+      distance_to_goal = sqrt(d.x * d.x + d.y * d.y + d.z * d.z);
+      ROS_INFO_STREAM("Distance to goal: " << distance_to_goal);
+      yaw_diff = fabs(atan2(sin(goal_yaw - current_yaw), cos(goal_yaw - current_yaw)));
+    } while (yaw_diff > goal->yaw_converged);
+    
+    
+    goal_to_pub = goal->pose;
+    goal_to_pub.header.frame_id = "map";
 
     // Check if target is reached...
     do
@@ -51,7 +103,8 @@ public:
       r.sleep();
 
       ROS_INFO_STREAM("Publishing goal to (" << p.x << ", " << p.y << ", " << p.z << ") ");
-      pub_.publish(goal->pose);
+      goal_to_pub.header.stamp = ros::Time::now();
+      pub_.publish(goal_to_pub);
 
       listener.waitForTransform("/map", "/base_link", ros::Time(0), ros::Duration(10.0));
       listener.lookupTransform("/map", "/base_link", ros::Time(0), transform);
