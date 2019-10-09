@@ -10,6 +10,7 @@ find_package(catkin REQUIRED COMPONENTS
   dynamic_reconfigure
   genmsg
   geometry_msgs
+  octomap_ros
   message_generation
   nav_msgs
   roscpp

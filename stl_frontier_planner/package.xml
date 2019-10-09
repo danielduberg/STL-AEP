@@ -22,7 +22,7 @@
   <depend>genmsg</depend>
   <depend>geometry_msgs</depend>
   <depend>nav_msgs</depend>
-  <depend>octomap_world</depend>
+  <depend>octomap_ros</depend>
   <depend>roscpp</depend>
   <depend>stl_aeplanner_msgs</depend>
   <depend>visualization_msgs</depend>

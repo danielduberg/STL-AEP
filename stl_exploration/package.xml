@@ -25,7 +25,6 @@
   <depend>nodelet</depend>
   <depend>octomap</depend>
   <depend>octomap_msgs</depend>
-  <depend>opencv2</depend>
   <depend>roscpp</depend>
   <depend>rospy</depend>
   <depend>sensor_msgs</depend>

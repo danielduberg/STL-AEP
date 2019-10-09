@@ -6,6 +6,7 @@ add_compile_options(-std=c++11)
 find_package(catkin REQUIRED COMPONENTS
   dd_gazebo_plugins
   geometry_msgs
+  octomap_ros
   octomap_msgs
   roscpp
   roslib
